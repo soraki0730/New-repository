@@ -93,8 +93,6 @@
       </li>
     </template>
 
-    <!-- 読み込み順：storage.js → app.js（app.js は DOMContentLoaded を待つので順序は安全） -->
-    <script src="storage.js"></script>
-    <script src="app.js"></script>
+    <script type="module" src="app.js"></script>
   </body>
 </html>
