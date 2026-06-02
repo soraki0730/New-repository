@@ -1,0 +1,302 @@
+/* =========================================================
+   style.css  ―  A：UI担当
+   テーマ：warm paper & ink（落ち着いた集中ワークスペース）
+   色やフォントは下の :root を変えるだけで全体を着せ替えできます
+   ========================================================= */
+
+:root {
+  /* --- 色 --- */
+  --paper: #f3ede1;     /* 背景（温かみのある生成り） */
+  --surface: #fbf8f1;   /* カード面 */
+  --ink: #2a2520;       /* 文字（黒に近い暖色） */
+  --ink-soft: #8a8073;  /* 補助テキスト */
+  --line: #e4dccc;      /* 境界線 */
+  --accent: #c75b39;    /* アクセント（テラコッタ） */
+  --accent-weak: #ecd9cf;
+  --done: #5f7a55;      /* 完了の色（セージ） */
+
+  /* --- 形 --- */
+  --radius: 14px;
+  --radius-sm: 10px;
+  --shadow: 0 1px 2px rgba(42, 37, 32, 0.05), 0 12px 32px -16px rgba(42, 37, 32, 0.25);
+
+  /* --- フォント --- */
+  --font-ui: "Zen Kaku Gothic New", system-ui, sans-serif;
+  --font-display: "Fraunces", Georgia, serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-ui);
+  color: var(--ink);
+  background:
+    radial-gradient(1200px 600px at 80% -10%, #f7f0e2, transparent),
+    var(--paper);
+  min-height: 100dvh;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ざらっとした紙の質感（控えめ） */
+.grain {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  z-index: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ===== レイアウト ===== */
+.app {
+  position: relative;
+  z-index: 1;
+  width: min(640px, 92vw);
+  margin: clamp(40px, 8vh, 88px) auto;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+/* ===== ヘッダー ===== */
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.head__brand {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.head__mark {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 600;
+  font-size: 30px;
+  letter-spacing: -0.01em;
+  color: var(--accent);
+}
+.head__sub {
+  font-size: 14px;
+  color: var(--ink-soft);
+  letter-spacing: 0.08em;
+}
+
+/* 進捗サマリ（◯/◯ ＋ バー） */
+.summary { display: flex; align-items: center; gap: 18px; }
+.summary__count {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  white-space: nowrap;
+}
+#progress-count {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 26px;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.summary__label { font-size: 13px; color: var(--ink-soft); }
+.summary__track {
+  flex: 1;
+  height: 8px;
+  background: var(--accent-weak);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.summary__bar {
+  height: 100%;
+  width: 0%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--accent), #e07a52);
+  transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ===== 入力欄 ===== */
+.composer {
+  display: flex;
+  gap: 10px;
+  background: var(--surface);
+  padding: 8px 8px 8px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.composer__input {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  font-family: var(--font-ui);
+  font-size: 16px;
+  color: var(--ink);
+  padding: 10px 0;
+}
+.composer__input::placeholder { color: var(--ink-soft); }
+.composer__input:focus { outline: none; }
+.composer__add {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: #fff;
+  font-size: 22px;
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.2s ease;
+}
+.composer__add:hover { background: #b14e2f; }
+.composer__add:active { transform: scale(0.92); }
+
+/* ===== 一覧 ===== */
+.list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+
+.task {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  box-shadow: var(--shadow);
+  transition: opacity 0.18s ease, transform 0.18s ease, border-color 0.2s ease;
+}
+.task:hover { border-color: #d8ccb4; }
+
+/* 完了チェック（自前デザイン） */
+.task__checkwrap { position: relative; flex: none; cursor: pointer; }
+.task__check {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+.task__checkbox {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 2px solid #cfc4ad;
+  border-radius: 8px;
+  transition: all 0.18s ease;
+}
+.task__checkbox::after {
+  content: "✓";
+  font-size: 14px;
+  color: #fff;
+  transform: scale(0);
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.task__check:checked + .task__checkbox {
+  background: var(--done);
+  border-color: var(--done);
+}
+.task__check:checked + .task__checkbox::after { transform: scale(1); }
+
+/* 本文（タイトル＋進捗） */
+.task__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.task__title {
+  font-size: 15.5px;
+  word-break: break-word;
+  transition: color 0.2s ease;
+}
+.task__progress { display: flex; align-items: center; gap: 12px; }
+
+/* ％スライダー（fill は app.js が --fill に流し込む） */
+.task__range {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  height: 6px;
+  border-radius: 99px;
+  background: linear-gradient(
+    90deg,
+    var(--accent) 0%,
+    var(--accent) var(--fill, 0%),
+    var(--accent-weak) var(--fill, 0%)
+  );
+  cursor: pointer;
+}
+.task__range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+}
+.task__range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--accent);
+  cursor: pointer;
+}
+.task__pct {
+  font-family: var(--font-display);
+  font-size: 13px;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+  width: 38px;
+  text-align: right;
+  flex: none;
+}
+
+/* 削除ボタン */
+.task__delete {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.task__delete:hover { background: #f1e6e1; color: var(--accent); }
+
+/* 完了状態 */
+.task.is-done { opacity: 0.66; }
+.task.is-done .task__title { text-decoration: line-through; color: var(--ink-soft); }
+
+/* ===== 空状態 ===== */
+.empty {
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: 14px;
+  padding: 28px 0;
+}
+
+/* ===== アニメーション ===== */
+.task.enter {
+  animation: enter 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+@keyframes enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.task.is-removing { opacity: 0; transform: translateX(10px) scale(0.98); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::after { animation: none !important; transition: none !important; }
+}
+
+/* ===== モバイル ===== */
+@media (max-width: 480px) {
+  .summary { flex-direction: column; align-items: stretch; gap: 10px; }
+  .summary__count { justify-content: flex-start; }
+  .task { padding: 12px 14px; gap: 10px; }
+}
