@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 {
   "manifest_version": 3,
   "name": "今日のタスク",
@@ -8,3 +9,6 @@
     "default_title": "今日のタスク"
   }
 }
+=======
+
+>>>>>>> 52ce862ed0be19aadfb516e4b9c9272834e3fd70
