@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>閲覧制限中</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #111;
+        color: #fff;
+        font-family: system-ui, sans-serif;
+        text-align: center;
+        padding: 24px;
+      }
+      .block-panel {
+        max-width: 560px;
+      }
+      h1 {
+        margin: 0 0 16px;
+        font-size: 2rem;
+      }
+      p {
+        margin: 0 0 16px;
+        line-height: 1.6;
+        opacity: 0.9;
+      }
+      .hint {
+        font-size: 0.95rem;
+        opacity: 0.75;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="block-panel">
+      <h1>閲覧制限中</h1>
+      <p>未完了のタスクがあるため、このページの閲覧は制限されています。</p>
+      <p class="hint">タスクを完了すると、自動的に制限が解除されます。</p>
+    </div>
+  </body>
+</html>

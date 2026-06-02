@@ -2,11 +2,12 @@ const DEFAULT_TASK_STATE = {
   totalCount: 0,
   pendingCount: 0,
   hasPendingTasks: false,
+  studyMode: false,
 };
 
 let currentTaskState = { ...DEFAULT_TASK_STATE };
 
-function computeTaskState(tasks = []) {
+function computeTaskState(tasks = [], studyMode = false) {
   const totalCount = Array.isArray(tasks) ? tasks.length : 0;
   const pendingCount = Array.isArray(tasks)
     ? tasks.filter((task) => !task.done).length
@@ -16,12 +17,13 @@ function computeTaskState(tasks = []) {
     totalCount,
     pendingCount,
     hasPendingTasks: pendingCount > 0,
+    studyMode: Boolean(studyMode),
   };
 }
 
 function refreshTaskState() {
-  chrome.storage.local.get(["tasks"], (result) => {
-    currentTaskState = computeTaskState(result.tasks);
+  chrome.storage.local.get(["tasks", "studyMode"], (result) => {
+    currentTaskState = computeTaskState(result.tasks, result.studyMode);
   });
 }
 
@@ -49,10 +51,13 @@ chrome.runtime.onStartup.addListener(() => {
 });
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName !== "local" || !changes.tasks) return;
+  if (areaName !== "local") return;
+  if (!changes.tasks && !changes.studyMode) return;
 
-  currentTaskState = computeTaskState(changes.tasks.newValue);
-  broadcastTaskState();
+  chrome.storage.local.get(["tasks", "studyMode"], (result) => {
+    currentTaskState = computeTaskState(result.tasks, result.studyMode);
+    broadcastTaskState();
+  });
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

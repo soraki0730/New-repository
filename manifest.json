@@ -8,6 +8,12 @@
     "http://*/*",
     "https://*/*"
   ],
+  "web_accessible_resources": [
+    {
+      "resources": ["block.html"],
+      "matches": ["<all_urls>"]
+    }
+  ],
   "background": {
     "service_worker": "background.js"
   },

@@ -17,6 +17,7 @@
 
 // ---- メモリ上の唯一の正 ----
 let tasks = [];
+let studyMode = false;
 
 /* Task スキーマ（チーム合意）
    { id, title, done, progress, createdAt, updatedAt }
@@ -176,6 +177,16 @@ async function handleAdd() {
   renderAll();
 }
 
+function renderStudyMode() {
+  els.studyToggle.checked = studyMode;
+}
+
+async function setStudyMode(enabled) {
+  studyMode = enabled;
+  await saveStudyMode(enabled);
+  renderStudyMode();
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   els.input = document.getElementById("task-input");
   els.addBtn = document.getElementById("add-btn");
@@ -189,8 +200,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   els.input.addEventListener("keydown", (e) => {
     if (e.key === "Enter") handleAdd(); // Enter で追加
   });
+  els.studyToggle = document.getElementById("study-mode-toggle");
+  els.studyToggle.addEventListener("change", async () => {
+    await setStudyMode(els.studyToggle.checked);
+  });
 
   tasks = await loadTasks(); // 起動時に1回だけ読む
+  studyMode = await loadStudyMode();
   renderAll();
+  renderStudyMode();
   els.input.focus(); // 開いたら即入力できる
 });
