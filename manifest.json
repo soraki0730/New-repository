@@ -1,14 +1,29 @@
-<<<<<<< HEAD
 {
   "manifest_version": 3,
   "name": "今日のタスク",
   "version": "1.0.0",
   "description": "シンプルなタスク管理ポップアップ",
+  "permissions": ["storage", "tabs"],
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
   "action": {
     "default_popup": "popup.html",
     "default_title": "今日のタスク"
   }
 }
-=======
 
->>>>>>> 52ce862ed0be19aadfb516e4b9c9272834e3fd70
