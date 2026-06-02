@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "今日のタスク",
+  "version": "1.0.0",
+  "description": "シンプルなタスク管理ポップアップ",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "今日のタスク"
+  }
+}

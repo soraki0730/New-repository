@@ -208,7 +208,7 @@ body {
 }
 .task__progress { display: flex; align-items: center; gap: 12px; }
 
-/* ％スライダー（fill は app.js が --fill に流し込む） */
+/* ％スライダー（fill は popup.js が --fill に流し込む） */
 .task__range {
   -webkit-appearance: none;
   appearance: none;
