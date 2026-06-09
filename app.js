@@ -18,16 +18,20 @@
 // ---- メモリ上の唯一の正 ----
 let tasks = [];
 let studyMode = false;
+let currentCalendarDate = new Date();
 
 /* Task スキーマ（チーム合意）
-   { id, title, done, progress, createdAt, updatedAt }
+   { id, title, memo, date, priority, done, progress, createdAt, updatedAt }
      progress : 0–100 の整数。done と同期（progress=100 ⇔ done=true）
      createdAt / updatedAt : No.3「最終更新時間」で使う土台。今は記録のみ */
-function makeTask(title) {
+function makeTask(taskData) {
   const now = Date.now();
   return {
     id: crypto.randomUUID(),
-    title: title.trim(),
+    title: taskData.title.trim(),
+    memo: taskData.memo || "",
+    date: taskData.date || "",
+    priority: taskData.priority || "normal",
     done: false,
     progress: 0,
     createdAt: now,
@@ -37,10 +41,10 @@ function makeTask(title) {
 
 // ====== ロジック（契約関数）======
 
-async function addTask(title) {
-  const t = (title || "").trim();
-  if (!t) return tasks;                 // 空タイトルは無視
-  tasks.push(makeTask(t));
+async function addTask(taskData) {
+  const title = (taskData.title || "").trim();
+  if (!title) return tasks;                 // 空タイトルは無視
+  tasks.push(makeTask(taskData));
   await saveTasks(tasks);
   return tasks;
 }
@@ -159,21 +163,99 @@ function renderList() {
   });
 }
 
+function renderCalendar() {
+  const year = currentCalendarDate.getFullYear();
+  const month = currentCalendarDate.getMonth();
+  els.calendarTitle.textContent = `${year}年${month + 1}月`;
+  els.calendarGrid.innerHTML = "";
+
+  const firstDay = new Date(year, month, 1);
+  const startDate = new Date(year, month, 1 - firstDay.getDay());
+
+  for (let i = 0; i < 42; i++) {
+    const date = new Date(startDate);
+    date.setDate(startDate.getDate() + i);
+    const dateText = formatDate(date);
+    const dayTasks = tasks.filter((task) => task.date === dateText);
+
+    const day = document.createElement("div");
+    day.className = "calendar__day";
+    if (date.getMonth() !== month) {
+      day.classList.add("is-outside");
+    }
+
+    const dateLabel = document.createElement("span");
+    dateLabel.className = "calendar__date";
+    dateLabel.textContent = date.getDate();
+
+    const taskBox = document.createElement("div");
+    taskBox.className = "calendar__tasks";
+
+    dayTasks.forEach((task) => {
+      const taskItem = document.createElement("span");
+      taskItem.className = "calendar__task";
+      taskItem.textContent = task.title;
+      if (task.priority === "high") {
+        taskItem.classList.add("is-high");
+      }
+      if (task.priority === "low") {
+        taskItem.classList.add("is-low");
+      }
+      if (task.done) {
+        taskItem.classList.add("is-done");
+      }
+      taskBox.appendChild(taskItem);
+    });
+
+    day.appendChild(dateLabel);
+    day.appendChild(taskBox);
+    els.calendarGrid.appendChild(day);
+  }
+}
+
+function formatDate(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 function renderAll() {
   renderList();
   renderSummary();
+  renderCalendar();
 }
 
-// 追加：Enter / ＋ボタン 共通。連続入力しやすいよう即フォーカスを戻す
-async function handleAdd() {
-  const value = els.input.value;
-  if (!value.trim()) {
-    els.input.focus();
+function openTaskDetail() {
+  const inputValue = els.input.value.trim();
+  els.detailTitle.value = inputValue;
+  els.detailMemo.value = "";
+  els.detailDate.value = "";
+  els.detailPriority.value = "normal";
+  els.detailModal.hidden = false;
+  els.detailTitle.focus();
+}
+
+function closeTaskDetail() {
+  els.detailModal.hidden = true;
+}
+
+async function handleDetailAdd() {
+  const title = els.detailTitle.value.trim();
+  if (!title) {
+    els.detailTitle.focus();
     return;
   }
-  await addTask(value);
+
+  await addTask({
+    title,
+    memo: els.detailMemo.value.trim(),
+    date: els.detailDate.value,
+    priority: els.detailPriority.value,
+  });
+
   els.input.value = "";
-  els.input.focus();
+  closeTaskDetail();
   renderAll();
 }
 
@@ -195,15 +277,42 @@ document.addEventListener("DOMContentLoaded", async () => {
   els.count = document.getElementById("progress-count");
   els.bar = document.getElementById("progress-bar");
   els.empty = document.getElementById("empty-state");
+  els.calendarTitle = document.getElementById("calendar-title");
+  els.calendarGrid = document.getElementById("calendar-grid");
+  els.prevMonthBtn = document.getElementById("prev-month-btn");
+  els.nextMonthBtn = document.getElementById("next-month-btn");
 
-  els.addBtn.addEventListener("click", handleAdd);
+  // 詳細設定画面の要素
+  els.detailModal = document.getElementById("task-detail-modal");
+  els.detailTitle = document.getElementById("detail-title");
+  els.detailMemo = document.getElementById("detail-memo");
+  els.detailDate = document.getElementById("detail-date");
+  els.detailPriority = document.getElementById("detail-priority");
+  els.detailCloseBtn = document.getElementById("detail-close-btn");
+  els.detailCancelBtn = document.getElementById("detail-cancel-btn");
+  els.detailAddBtn = document.getElementById("detail-add-btn");
+
+  els.addBtn.addEventListener("click", openTaskDetail);
   els.input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") handleAdd(); // Enter で追加
+    if (e.key === "Enter") openTaskDetail();
   });
   els.studyToggle = document.getElementById("study-mode-toggle");
   els.studyToggle.addEventListener("change", async () => {
     await setStudyMode(els.studyToggle.checked);
   });
+
+  els.prevMonthBtn.addEventListener("click", () => {
+    currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1);
+    renderCalendar();
+  });
+  els.nextMonthBtn.addEventListener("click", () => {
+    currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1);
+    renderCalendar();
+  });
+
+  els.detailCloseBtn.addEventListener("click", closeTaskDetail);
+  els.detailCancelBtn.addEventListener("click", closeTaskDetail);
+  els.detailAddBtn.addEventListener("click", handleDetailAdd);
 
   tasks = await loadTasks(); // 起動時に1回だけ読む
   studyMode = await loadStudyMode();
