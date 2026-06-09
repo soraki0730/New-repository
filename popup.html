@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
@@ -71,7 +71,88 @@
       <p id="empty-state" class="empty" hidden>
         まだタスクがありません。上の欄に入力して始めよう。
       </p>
+      <!-- 締め切りカレンダー画面 -->
+      <section class="calendar">
+        <div class="calendar__head">
+          <button id="prev-month-btn" class="calendar__nav" type="button">
+            ‹
+          </button>
+
+          <h2 id="calendar-title" class="calendar__title">2026年6月</h2>
+
+          <button id="next-month-btn" class="calendar__nav" type="button">
+            ›
+          </button>
+        </div>
+
+        <div class="calendar__week">
+          <span>日</span>
+          <span>月</span>
+          <span>火</span>
+          <span>水</span>
+          <span>木</span>
+          <span>金</span>
+          <span>土</span>
+        </div>
+
+        <div id="calendar-grid" class="calendar__grid"></div>
+      </section>
     </main>
+    <!-- タスク詳細設定画面 -->
+    <div id="task-detail-modal" class="modal" hidden>
+      <div class="modal__overlay"></div>
+
+      <section class="modal__panel">
+        <div class="modal__head">
+          <h2>タスク詳細設定</h2>
+          <button id="detail-close-btn" class="modal__close" type="button">
+            ×
+          </button>
+        </div>
+
+        <div class="modal__body">
+          <label class="detail-field">
+            <span>タスク名</span>
+            <input
+              id="detail-title"
+              type="text"
+              placeholder="例：レポートを書く"
+            />
+          </label>
+
+          <label class="detail-field">
+            <span>メモ</span>
+            <textarea
+              id="detail-memo"
+              placeholder="内容や注意点を入力"
+            ></textarea>
+          </label>
+
+          <label class="detail-field">
+            <span>期限</span>
+            <input id="detail-date" type="date" />
+          </label>
+
+          <label class="detail-field">
+            <span>優先度</span>
+            <select id="detail-priority">
+              <option value="low">低</option>
+              <option value="normal" selected>中</option>
+              <option value="high">高</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="modal__actions">
+          <button id="detail-cancel-btn" class="modal__cancel" type="button">
+            キャンセル
+          </button>
+          <button id="detail-add-btn" class="modal__add" type="button">
+            追加
+          </button>
+        </div>
+      </section>
+    </div>
 
     <!-- 1行ぶんの見た目テンプレート（A が見た目を所有 / popup.js が複製して中身を入れる） -->
     <template id="task-item">
