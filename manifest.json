@@ -10,7 +10,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["block.html"],
+      "resources": ["popup.html", "app.html", "block.html"],
       "matches": ["<all_urls>"]
     }
   ],

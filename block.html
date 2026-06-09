@@ -33,13 +33,38 @@
         font-size: 0.95rem;
         opacity: 0.75;
       }
+      .block-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 14px 20px;
+        border: none;
+        border-radius: 999px;
+        background: #c75b39;
+        color: #fff;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: transform 0.15s ease, background 0.2s ease;
+      }
+      .block-button:hover {
+        background: #b14e2f;
+      }
+      .block-button:active {
+        transform: scale(0.97);
+      }
     </style>
   </head>
   <body>
     <div class="block-panel">
       <h1>閲覧制限中</h1>
-      <p>未完了のタスクがあるため、このページの閲覧は制限されています。</p>
-      <p class="hint">タスクを完了すると、自動的に制限が解除されます。</p>
+      <p id="block-message">読み込み中...</p>
+      <p class="hint" id="block-hint"></p>
+      <button id="open-app" class="block-button" type="button">
+        タスク管理画面へ
+      </button>
     </div>
+
+    <script src="storage.js"></script>
+    <script src="block-entry.js"></script>
   </body>
 </html>

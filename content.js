@@ -8,13 +8,10 @@ function shouldBlockUrl(url, taskState) {
 }
 
 function redirectToBlockPage() {
-  const target = chrome.runtime.getURL("block.html");
-  console.log("[content] redirecting to", target);
-  window.location.replace(target);
+  window.location.href = chrome.runtime.getURL("block.html");
 }
 
 function handleTaskState(taskState) {
-  console.log("[content] handleTaskState", window.location.href, taskState);
   if (shouldBlockUrl(window.location.href, taskState)) {
     redirectToBlockPage();
   }
