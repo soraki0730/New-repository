@@ -61,6 +61,16 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message?.type !== "GET_TASK_STATE") return;
-  sendResponse(currentTaskState);
+  if (message?.type === "GET_TASK_STATE") {
+    sendResponse(currentTaskState);
+    return;
+  }
+
+  if (message?.type === "OPEN_BLOCK_PAGE") {
+    chrome.tabs.create({
+      url: chrome.runtime.getURL("block.html"),
+    });
+    sendResponse({ success: true });
+    return;
+  }
 });
