@@ -1,37 +1,28 @@
 /* =========================================================
-   popup.js  ―  B：ロジック担当
-   ---------------------------------------------------------
+   app.js  ―  ロジック担当（A・B担当）
    契約（名前は勝手に変えない）：
-     addTask(title)    → Promise<Task[]>
-     toggleTask(id)    → Promise<Task[]>
-     deleteTask(id)    → Promise<Task[]>
-     getTasks()        → Task[]        ※同期。今メモリにある配列を返すだけ
-   No.2 のために追加した関数（基本6契約のリネームではなく追加）：
-     setProgress(id, percent) → Promise<Task[]>
-
-   ルール：
-   - mutation 系（add/toggle/delete/setProgress）は中で saveTasks まで呼び、更新後の配列を返す
-   - 書き込みはこの4関数の中だけ。getTasks は読むだけ・保存しない
-   - これで「保存タイミング」が1か所に集約され、状態とストレージがズレない
+     addTask(title)          → Promise<Task[]>
+     toggleTask(id)          → Promise<Task[]>
+     deleteTask(id)          → Promise<Task[]>
+     getTasks()              → Task[]
+     setProgress(id, percent)→ Promise<Task[]>
    ========================================================= */
 
-// ---- メモリ上の唯一の正 ----
 let tasks = [];
-let studyMode = false;
-let currentCalendarDate = new Date();
 
-/* Task スキーマ（チーム合意）
-   { id, title, memo, date, priority, done, progress, createdAt, updatedAt }
-     progress : 0–100 の整数。done と同期（progress=100 ⇔ done=true）
-     createdAt / updatedAt : No.3「最終更新時間」で使う土台。今は記録のみ */
-function makeTask(taskData) {
+function getTodayDate() {
+  return new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+}
+
+function makeTask(title, { category = "", date = "", startTime = "", endTime = "" } = {}) {
   const now = Date.now();
   return {
     id: crypto.randomUUID(),
-    title: taskData.title.trim(),
-    memo: taskData.memo || "",
-    date: taskData.date || "",
-    priority: taskData.priority || "normal",
+    title: title.trim(),
+    category,
+    date: date || getTodayDate(),
+    startTime,
+    endTime,
     done: false,
     progress: 0,
     createdAt: now,
@@ -41,10 +32,10 @@ function makeTask(taskData) {
 
 // ====== ロジック（契約関数）======
 
-async function addTask(taskData) {
-  const title = (taskData.title || "").trim();
-  if (!title) return tasks;                 // 空タイトルは無視
-  tasks.push(makeTask(taskData));
+async function addTask(title, options = {}) {
+  const t = (title || "").trim();
+  if (!t) return tasks;
+  tasks.push(makeTask(t, options));
   await saveTasks(tasks);
   return tasks;
 }
@@ -53,7 +44,7 @@ async function toggleTask(id) {
   const task = tasks.find((x) => x.id === id);
   if (!task) return tasks;
   task.done = !task.done;
-  task.progress = task.done ? 100 : 0;  // チェック=100% / 外す=0%
+  task.progress = task.done ? 100 : 0;
   task.updatedAt = Date.now();
   await saveTasks(tasks);
   return tasks;
@@ -64,7 +55,7 @@ async function setProgress(id, percent) {
   if (!task) return tasks;
   const p = Math.max(0, Math.min(100, Math.round(percent)));
   task.progress = p;
-  task.done = p >= 100;                 // 100%なら完了扱い（％と完了を同期）
+  task.done = p >= 100;
   task.updatedAt = Date.now();
   await saveTasks(tasks);
   return tasks;
@@ -80,7 +71,6 @@ function getTasks() {
   return tasks;
 }
 
-// 進捗計算：完了数 / 全体数（STEP1 の ◯/◯ 表示用）
 function getProgressSummary() {
   const total = tasks.length;
   const done = tasks.filter((x) => x.done).length;
@@ -88,19 +78,26 @@ function getProgressSummary() {
   return { done, total, ratio };
 }
 
-/* =========================================================
-   ここから下：画面描画と操作の配線
-   （A の markup / CSS を、データから組み立てて反映する係）
-   ========================================================= */
+// ====== 描画 ======
 
 const els = {};
-let seen = new Set(); // 既に表示済みの id。新規行だけ登場アニメさせるため
+let seen = new Set();
+
+const TASK_ICONS = ["📚", "💼", "📖", "🧮", "✏️", "🎯", "📝", "🔬"];
 
 function renderSummary() {
   const { done, total, ratio } = getProgressSummary();
-  els.count.textContent = `${done} / ${total}`;
-  els.bar.style.width = `${ratio}%`;
-  els.empty.hidden = total !== 0;
+
+  if (els.count) els.count.textContent = `${done} / ${total} 完了`;
+  if (els.bar)   els.bar.style.width = `${ratio}%`;
+  if (els.empty) els.empty.hidden = total !== 0;
+
+  if (els.achievementPct) els.achievementPct.textContent = `${ratio}%`;
+  if (els.achievementCircle) {
+    const deg = ratio * 3.6;
+    els.achievementCircle.style.background =
+      `conic-gradient(from -90deg, var(--primary) ${deg}deg, #E0E0E0 ${deg}deg)`;
+  }
 }
 
 function renderList() {
@@ -115,7 +112,6 @@ function renderList() {
     node.dataset.id = task.id;
     node.classList.toggle("is-done", task.done);
 
-    // 初登場の行だけ stagger 付きで登場（再描画のたびにチラつかせない）
     if (!prevSeen.has(task.id)) {
       node.classList.add("enter");
       node.style.setProperty("--i", newIdx++);
@@ -125,8 +121,8 @@ function renderList() {
     const check = node.querySelector(".task__check");
     const title = node.querySelector(".task__title");
     const range = node.querySelector(".task__range");
-    const pct = node.querySelector(".task__pct");
-    const del = node.querySelector(".task__delete");
+    const pct   = node.querySelector(".task__pct");
+    const del   = node.querySelector(".task__delete");
 
     check.checked = task.done;
     title.textContent = task.title;
@@ -134,23 +130,21 @@ function renderList() {
     range.style.setProperty("--fill", `${task.progress}%`);
     pct.textContent = `${task.progress}%`;
 
-    // 完了チェック（方式1）
     check.addEventListener("change", async () => {
       await toggleTask(task.id);
       renderAll();
     });
 
-    // ％スライダー（方式2）：ドラッグ中は表示だけ即時更新、放したら保存
     range.addEventListener("input", () => {
       pct.textContent = `${range.value}%`;
       range.style.setProperty("--fill", `${range.value}%`);
     });
+
     range.addEventListener("change", async () => {
       await setProgress(task.id, Number(range.value));
       renderAll();
     });
 
-    // 削除（フェードを見せてから消す）
     del.addEventListener("click", () => {
       node.classList.add("is-removing");
       setTimeout(async () => {
@@ -163,160 +157,215 @@ function renderList() {
   });
 }
 
-function renderCalendar() {
-  const year = currentCalendarDate.getFullYear();
-  const month = currentCalendarDate.getMonth();
-  els.calendarTitle.textContent = `${year}年${month + 1}月`;
-  els.calendarGrid.innerHTML = "";
+function renderProgressList() {
+  if (!els.progressList) return;
+  els.progressList.innerHTML = "";
 
-  const firstDay = new Date(year, month, 1);
-  const startDate = new Date(year, month, 1 - firstDay.getDay());
-
-  for (let i = 0; i < 42; i++) {
-    const date = new Date(startDate);
-    date.setDate(startDate.getDate() + i);
-    const dateText = formatDate(date);
-    const dayTasks = tasks.filter((task) => task.date === dateText);
-
-    const day = document.createElement("div");
-    day.className = "calendar__day";
-    if (date.getMonth() !== month) {
-      day.classList.add("is-outside");
-    }
-
-    const dateLabel = document.createElement("span");
-    dateLabel.className = "calendar__date";
-    dateLabel.textContent = date.getDate();
-
-    const taskBox = document.createElement("div");
-    taskBox.className = "calendar__tasks";
-
-    dayTasks.forEach((task) => {
-      const taskItem = document.createElement("span");
-      taskItem.className = "calendar__task";
-      taskItem.textContent = task.title;
-      if (task.priority === "high") {
-        taskItem.classList.add("is-high");
-      }
-      if (task.priority === "low") {
-        taskItem.classList.add("is-low");
-      }
-      if (task.done) {
-        taskItem.classList.add("is-done");
-      }
-      taskBox.appendChild(taskItem);
-    });
-
-    day.appendChild(dateLabel);
-    day.appendChild(taskBox);
-    els.calendarGrid.appendChild(day);
+  const current = getTasks();
+  if (current.length === 0) {
+    const msg = document.createElement("p");
+    msg.style.cssText = "text-align:center;color:var(--ink-soft);padding:24px;font-size:14px;";
+    msg.textContent = "タスクがありません";
+    els.progressList.appendChild(msg);
+    return;
   }
-}
 
-function formatDate(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  current.forEach((task, i) => {
+    const item = document.createElement("div");
+    item.className = "progress-item";
+
+    const head = document.createElement("div");
+    head.className = "progress-item__head";
+
+    const icon = document.createElement("div");
+    icon.className = "progress-item__icon";
+    icon.textContent = TASK_ICONS[i % TASK_ICONS.length];
+
+    const name = document.createElement("span");
+    name.className = "progress-item__name";
+    name.textContent = task.title;
+
+    const pctEl = document.createElement("span");
+    pctEl.className = "progress-item__pct";
+    pctEl.textContent = `${task.progress}%`;
+
+    head.appendChild(icon);
+    head.appendChild(name);
+    head.appendChild(pctEl);
+
+    const track = document.createElement("div");
+    track.className = "progress-item__track";
+
+    const fill = document.createElement("div");
+    fill.className = "progress-item__fill";
+    fill.style.width = `${task.progress}%`;
+
+    track.appendChild(fill);
+    item.appendChild(head);
+    item.appendChild(track);
+    els.progressList.appendChild(item);
+  });
 }
 
 function renderAll() {
   renderList();
   renderSummary();
-  renderCalendar();
+  renderProgressList();
 }
 
-function openTaskDetail() {
-  const inputValue = els.input.value.trim();
-  els.detailTitle.value = inputValue;
-  els.detailMemo.value = "";
-  els.detailDate.value = "";
-  els.detailPriority.value = "normal";
-  els.detailModal.hidden = false;
-  els.detailTitle.focus();
+// ====== モーダル ======
+
+function openModal() {
+  els.taskDate.value = getTodayDate();
+  els.modal.classList.add("active");
+  setTimeout(() => els.input.focus(), 50);
 }
 
-function closeTaskDetail() {
-  els.detailModal.hidden = true;
+function closeModal() {
+  els.modal.classList.remove("active");
+  els.input.value = "";
+  els.taskDate.value = "";
+  els.taskStartTime.value = "";
+  els.taskEndTime.value = "";
+  document.querySelectorAll(".category-chip").forEach((c) => c.classList.remove("selected"));
 }
 
-async function handleDetailAdd() {
-  const title = els.detailTitle.value.trim();
-  if (!title) {
-    els.detailTitle.focus();
+async function handleAdd() {
+  const title = els.input.value;
+  if (!title.trim()) {
+    els.input.focus();
+    return;
+  }
+  const selectedChip = document.querySelector(".category-chip.selected");
+  await addTask(title, {
+    category:  selectedChip ? selectedChip.dataset.value : "",
+    date:      els.taskDate.value,
+    startTime: els.taskStartTime.value,
+    endTime:   els.taskEndTime.value,
+  });
+  closeModal();
+  renderAll();
+}
+
+// ====== ナビゲーション ======
+
+function switchView(viewName) {
+  document.querySelectorAll(".view").forEach((v) => v.classList.remove("active"));
+  document.querySelectorAll(".nav-btn").forEach((b) => b.classList.remove("active"));
+
+  const view = document.getElementById(`view-${viewName}`);
+  if (view) view.classList.add("active");
+
+  const btn = document.querySelector(`.nav-btn[data-view="${viewName}"]`);
+  if (btn) btn.classList.add("active");
+
+  if (viewName === "tasks") renderProgressList();
+}
+
+// ====== 設定タブ UI（保存は Role C が担当）======
+
+let blockUrls = ["https://www.youtube.com/"];
+
+function renderBlockUrls() {
+  els.blockUrlList.innerHTML = "";
+
+  if (blockUrls.length === 0) {
+    const empty = document.createElement("p");
+    empty.style.cssText = "padding:12px 16px;font-size:13px;color:var(--ink-soft);border-top:1px solid var(--line);";
+    empty.textContent = "ブロックするURLがありません";
+    els.blockUrlList.appendChild(empty);
     return;
   }
 
-  await addTask({
-    title,
-    memo: els.detailMemo.value.trim(),
-    date: els.detailDate.value,
-    priority: els.detailPriority.value,
+  blockUrls.forEach((url, i) => {
+    const item = document.createElement("div");
+    item.className = "block-url-item";
+
+    const text = document.createElement("span");
+    text.className = "block-url-item__text";
+    text.textContent = url;
+
+    const removeBtn = document.createElement("button");
+    removeBtn.className = "block-url-item__remove";
+    removeBtn.textContent = "×";
+    removeBtn.setAttribute("aria-label", `${url}を削除`);
+    removeBtn.addEventListener("click", () => {
+      blockUrls.splice(i, 1);
+      renderBlockUrls();
+    });
+
+    item.appendChild(text);
+    item.appendChild(removeBtn);
+    els.blockUrlList.appendChild(item);
   });
-
-  els.input.value = "";
-  closeTaskDetail();
-  renderAll();
 }
 
-function renderStudyMode() {
-  els.studyToggle.checked = studyMode;
+function handleAddBlockUrl() {
+  const url = els.blockUrlInput.value.trim();
+  if (!url) return;
+  if (!blockUrls.includes(url)) {
+    blockUrls.push(url);
+    renderBlockUrls();
+  }
+  els.blockUrlInput.value = "";
+  els.blockUrlInput.focus();
 }
 
-async function setStudyMode(enabled) {
-  studyMode = enabled;
-  await saveStudyMode(enabled);
-  renderStudyMode();
-}
+// ====== 初期化 ======
 
 document.addEventListener("DOMContentLoaded", async () => {
-  els.input = document.getElementById("task-input");
-  els.addBtn = document.getElementById("add-btn");
-  els.list = document.getElementById("task-list");
-  els.template = document.getElementById("task-item");
-  els.count = document.getElementById("progress-count");
-  els.bar = document.getElementById("progress-bar");
-  els.empty = document.getElementById("empty-state");
-  els.calendarTitle = document.getElementById("calendar-title");
-  els.calendarGrid = document.getElementById("calendar-grid");
-  els.prevMonthBtn = document.getElementById("prev-month-btn");
-  els.nextMonthBtn = document.getElementById("next-month-btn");
+  els.input             = document.getElementById("task-input");
+  els.list              = document.getElementById("task-list");
+  els.template          = document.getElementById("task-item");
+  els.count             = document.getElementById("progress-count");
+  els.bar               = document.getElementById("progress-bar");
+  els.empty             = document.getElementById("empty-state");
+  els.modal             = document.getElementById("add-modal");
+  els.achievementPct    = document.getElementById("achievement-pct");
+  els.achievementCircle = document.getElementById("achievement-circle");
+  els.progressList      = document.getElementById("progress-list");
+  els.taskDate          = document.getElementById("task-date");
+  els.taskStartTime     = document.getElementById("task-start-time");
+  els.taskEndTime       = document.getElementById("task-end-time");
+  els.blockUrlList      = document.getElementById("block-url-list");
+  els.blockUrlInput     = document.getElementById("block-url-input");
 
-  // 詳細設定画面の要素
-  els.detailModal = document.getElementById("task-detail-modal");
-  els.detailTitle = document.getElementById("detail-title");
-  els.detailMemo = document.getElementById("detail-memo");
-  els.detailDate = document.getElementById("detail-date");
-  els.detailPriority = document.getElementById("detail-priority");
-  els.detailCloseBtn = document.getElementById("detail-close-btn");
-  els.detailCancelBtn = document.getElementById("detail-cancel-btn");
-  els.detailAddBtn = document.getElementById("detail-add-btn");
+  // カテゴリチップ：1つだけ選択できる
+  document.querySelectorAll(".category-chip").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      document.querySelectorAll(".category-chip").forEach((c) => c.classList.remove("selected"));
+      chip.classList.add("selected");
+    });
+  });
 
-  els.addBtn.addEventListener("click", openTaskDetail);
+  // タスク追加
+  document.getElementById("add-btn").addEventListener("click", openModal);
+  document.getElementById("add-btn-tasks").addEventListener("click", openModal);
+  document.getElementById("modal-cancel").addEventListener("click", closeModal);
+  document.getElementById("modal-submit").addEventListener("click", handleAdd);
+
   els.input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") openTaskDetail();
-  });
-  els.studyToggle = document.getElementById("study-mode-toggle");
-  els.studyToggle.addEventListener("change", async () => {
-    await setStudyMode(els.studyToggle.checked);
+    if (e.key === "Enter")  handleAdd();
+    if (e.key === "Escape") closeModal();
   });
 
-  els.prevMonthBtn.addEventListener("click", () => {
-    currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1);
-    renderCalendar();
-  });
-  els.nextMonthBtn.addEventListener("click", () => {
-    currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1);
-    renderCalendar();
+  els.modal.addEventListener("click", (e) => {
+    if (e.target === els.modal) closeModal();
   });
 
-  els.detailCloseBtn.addEventListener("click", closeTaskDetail);
-  els.detailCancelBtn.addEventListener("click", closeTaskDetail);
-  els.detailAddBtn.addEventListener("click", handleDetailAdd);
+  // ナビゲーション
+  document.querySelectorAll(".nav-btn").forEach((btn) => {
+    btn.addEventListener("click", () => switchView(btn.dataset.view));
+  });
 
-  tasks = await loadTasks(); // 起動時に1回だけ読む
-  studyMode = await loadStudyMode();
+  // 設定：ブロックURL
+  document.getElementById("block-url-add-btn").addEventListener("click", handleAddBlockUrl);
+  document.getElementById("block-url-input").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") handleAddBlockUrl();
+  });
+
+  // 初期描画
+  tasks = await loadTasks();
   renderAll();
-  renderStudyMode();
-  els.input.focus(); // 開いたら即入力できる
+  renderBlockUrls();
 });

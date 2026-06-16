@@ -10,7 +10,7 @@
       href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="app.css" />
+    <link rel="stylesheet" href="style.css" />
   </head>
   <body>
     <div class="app-frame">
@@ -44,6 +44,7 @@
           <button class="bell-btn" aria-label="通知">🔔</button>
         </header>
 
+        <!-- 達成率カード -->
         <div class="achievement-card">
           <div class="achievement__content">
             <p class="achievement__label">今日の達成率</p>
@@ -57,6 +58,7 @@
           </div>
         </div>
 
+        <!-- タスク一覧 -->
         <div class="section">
           <h3 class="section__head">
             今日のタスク
@@ -68,8 +70,10 @@
           </p>
         </div>
 
+        <!-- 追加ボタン -->
         <button class="add-fab" id="add-btn">＋ 追加</button>
 
+        <!-- 集中サポートバナー -->
         <div class="focus-banner">
           <div class="focus-banner__icon">🛡️</div>
           <div class="focus-banner__text">
@@ -80,7 +84,7 @@
         </div>
       </div>
 
-      <!-- ===== VIEW: タスク（カテゴリ別進捗）===== -->
+      <!-- ===== VIEW: タスク進捗 ===== -->
       <div class="view view--tasks" id="view-tasks">
 
         <div class="tasks-view-header">
@@ -110,7 +114,7 @@
         </div>
       </div>
 
-      <!-- ===== VIEW: 分析（仮置き）===== -->
+      <!-- ===== VIEW: 分析 ===== -->
       <div class="view view--analytics" id="view-analytics">
         <div class="placeholder-view">
           <span>📊</span>
@@ -120,38 +124,10 @@
 
       <!-- ===== VIEW: 設定 ===== -->
       <div class="view view--settings" id="view-settings">
-
-        <div class="settings-header">
-          <h2>設定</h2>
+        <div class="placeholder-view">
+          <span>⚙️</span>
+          <p>設定機能は準備中です</p>
         </div>
-
-        <div class="settings-section">
-          <p class="settings-section__title">学習モード</p>
-          <div class="settings-row">
-            <div>
-              <p class="settings-row__label">スタディモード</p>
-              <p class="settings-row__sub">ONにすると学習中にサイトをブロックします</p>
-            </div>
-            <label class="toggle" aria-label="スタディモード切替">
-              <input type="checkbox" id="study-mode-toggle" />
-              <span class="toggle__track"></span>
-            </label>
-          </div>
-        </div>
-
-        <div class="settings-section">
-          <p class="settings-section__title">ブロックするURL</p>
-          <div class="block-url-list" id="block-url-list"></div>
-          <div class="block-url-add">
-            <input
-              type="url"
-              id="block-url-input"
-              placeholder="https://www.youtube.com/"
-            />
-            <button class="block-url-add__btn" id="block-url-add-btn">追加</button>
-          </div>
-        </div>
-
       </div>
 
       <!-- ===== タスク追加モーダル ===== -->
@@ -162,8 +138,6 @@
             <h2 class="modal-sheet__title">タスク追加</h2>
             <div style="width:70px;"></div>
           </div>
-
-          <!-- タスク名 -->
           <div class="modal-field">
             <label for="task-input">科目・タスク名</label>
             <input
@@ -173,37 +147,6 @@
               autocomplete="off"
             />
           </div>
-
-          <!-- カテゴリ -->
-          <div class="modal-field">
-            <label>カテゴリ</label>
-            <div class="category-chips" id="category-chips">
-              <button class="category-chip" type="button" data-value="プログラミング">プログラミング</button>
-              <button class="category-chip" type="button" data-value="学習">学習</button>
-              <button class="category-chip" type="button" data-value="就活">就活</button>
-              <button class="category-chip" type="button" data-value="読書">読書</button>
-              <button class="category-chip" type="button" data-value="その他">その他</button>
-            </div>
-          </div>
-
-          <!-- 日付 -->
-          <div class="modal-field">
-            <label for="task-date">日付</label>
-            <input id="task-date" type="date" />
-          </div>
-
-          <!-- 開始時間 / 終了時間 -->
-          <div class="modal-field-row">
-            <div class="modal-field">
-              <label for="task-start-time">開始時間</label>
-              <input id="task-start-time" type="time" />
-            </div>
-            <div class="modal-field">
-              <label for="task-end-time">終了時間</label>
-              <input id="task-end-time" type="time" />
-            </div>
-          </div>
-
           <button class="modal-submit" id="modal-submit">タスクを追加</button>
         </div>
       </div>
