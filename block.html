@@ -3,120 +3,180 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>閲覧制限中</title>
+    <title>集中モード中</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
     <style>
+      :root {
+        --primary:       #00897B;
+        --primary-light: #E0F2F1;
+        --primary-dark:  #00695C;
+        --blue:          #1565C0;
+        --bg:            #F0F4F8;
+        --surface:       #FFFFFF;
+        --ink:           #1A2340;
+        --ink-soft:      #78909C;
+        --line:          #ECEFF1;
+        --shadow:        0 2px 12px rgba(0,0,0,0.07);
+      }
+
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+
       body {
-        margin: 0;
+        font-family: "Zen Kaku Gothic New", system-ui, sans-serif;
+        background: var(--bg);
         min-height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: #111;
-        color: #fff;
-        font-family: system-ui, sans-serif;
         padding: 24px;
+        color: var(--ink);
+        -webkit-font-smoothing: antialiased;
       }
+
+      /* ===== パネル ===== */
       .block-panel {
-        max-width: 560px;
-        width: 100%;
+        width: min(520px, 100%);
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
       }
-      h1 {
-        margin: 0 0 24px;
-        font-size: 2rem;
+
+      /* ===== ヘッダーカード ===== */
+      .block-header {
+        background: var(--blue);
+        border-radius: 20px;
+        padding: 32px 28px;
         text-align: center;
+        color: white;
       }
-      .block-message {
-        text-align: center;
-        margin: 0 0 24px;
+
+      .block-header__icon {
+        font-size: 48px;
+        display: block;
+        margin-bottom: 16px;
+      }
+
+      .block-header__title {
+        font-size: 22px;
+        font-weight: 700;
+        margin-bottom: 8px;
+      }
+
+      .block-header__message {
+        font-size: 14px;
+        opacity: 0.85;
         line-height: 1.6;
-        opacity: 0.9;
       }
-      .tasks-section {
-        margin: 24px 0;
-        padding: 20px;
-        background: rgba(255, 255, 255, 0.05);
-        border-radius: 8px;
-      }
-      .tasks-section h2 {
-        margin: 0 0 16px;
-        font-size: 1.2rem;
-        opacity: 0.8;
-      }
-      .tasks-list {
-        list-style: none;
-        margin: 0;
-        padding: 0;
-      }
-      .task-item {
-        padding: 12px;
-        margin: 8px 0;
-        background: rgba(255, 255, 255, 0.08);
-        border-left: 3px solid #c75b39;
-        border-radius: 4px;
-        font-size: 0.95rem;
-      }
-      .task-name {
-        font-weight: 500;
-        margin-bottom: 4px;
-      }
-      .task-meta {
-        font-size: 0.85rem;
+
+      .block-header__hint {
+        margin-top: 10px;
+        font-size: 13px;
         opacity: 0.7;
       }
-      .hint {
-        text-align: center;
-        font-size: 0.95rem;
-        opacity: 0.75;
-        margin: 16px 0;
+
+      /* ===== タスクカード ===== */
+      .tasks-section {
+        background: var(--surface);
+        border-radius: 20px;
+        padding: 20px;
+        box-shadow: var(--shadow);
       }
+
+      .tasks-section__head {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--ink-soft);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 14px;
+      }
+
+      /* block-entry.js が生成するクラス */
+      .tasks-list {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .task-item {
+        background: var(--bg);
+        border-radius: 14px;
+        padding: 14px 16px;
+        border-left: 4px solid var(--primary);
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .task-name {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--ink);
+      }
+
+      .task-meta {
+        font-size: 12px;
+        color: var(--ink-soft);
+      }
+
+      .empty-state {
+        text-align: center;
+        padding: 28px 0;
+        color: var(--ink-soft);
+        font-size: 14px;
+      }
+
+      /* ===== ボタン ===== */
       .block-button {
         display: block;
         width: 100%;
-        padding: 14px 20px;
+        padding: 16px;
         border: none;
-        border-radius: 8px;
-        background: #c75b39;
-        color: #fff;
-        font-size: 1rem;
+        border-radius: 16px;
+        background: var(--primary);
+        color: white;
+        font-family: "Zen Kaku Gothic New", system-ui, sans-serif;
+        font-size: 16px;
+        font-weight: 700;
         cursor: pointer;
-        transition: transform 0.15s ease, background 0.2s ease;
-        box-sizing: border-box;
+        transition: background 0.2s, transform 0.1s;
       }
-      .block-button:hover {
-        background: #b14e2f;
-      }
-      .block-button:active {
-        transform: scale(0.97);
-      }
-      .empty-state {
-        text-align: center;
-        padding: 32px 0;
-        opacity: 0.8;
-      }
+
+      .block-button:hover  { background: var(--primary-dark); }
+      .block-button:active { transform: scale(0.98); }
     </style>
   </head>
   <body>
     <div class="block-panel">
-      <h1>閲覧制限中</h1>
-      <div class="block-message">
-        <p id="block-message">読み込み中...</p>
-        <p class="hint" id="block-hint"></p>
+
+      <!-- ヘッダー -->
+      <div class="block-header">
+        <span class="block-header__icon">🛡️</span>
+        <h1 class="block-header__title">集中モード中</h1>
+        <p class="block-header__message" id="block-message">読み込み中...</p>
+        <p class="block-header__hint" id="block-hint"></p>
       </div>
 
+      <!-- 未完了タスク一覧 -->
       <div class="tasks-section">
-        <h2>未完了タスク</h2>
+        <p class="tasks-section__head">未完了タスク</p>
         <div id="tasks-container">
           <div class="empty-state">読み込み中...</div>
         </div>
       </div>
 
+      <!-- タスク管理画面へ -->
       <button id="open-app" class="block-button" type="button">
-        タスク管理画面へ
+        タスク管理画面へ →
       </button>
+
     </div>
 
     <script src="storage.js"></script>
     <script src="block-entry.js"></script>
   </body>
 </html>
-

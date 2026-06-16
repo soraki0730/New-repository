@@ -216,10 +216,14 @@
             <span class="task-check-circle"></span>
           </label>
           <div class="task-card__body">
+            <span class="task__time"></span>
             <span class="task__title"></span>
-            <div class="task-card__progress">
-              <input class="task__range" type="range" min="0" max="100" step="5" aria-label="進捗" />
-              <span class="task__pct">0%</span>
+            <div class="task-card__footer">
+              <span class="task__category"></span>
+              <div class="task-card__progress">
+                <input class="task__range" type="range" min="0" max="100" step="5" aria-label="進捗" />
+                <span class="task__pct">0%</span>
+              </div>
             </div>
           </div>
           <button class="task__delete" type="button" aria-label="削除">×</button>

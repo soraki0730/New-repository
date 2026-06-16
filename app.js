@@ -83,14 +83,25 @@ function getProgressSummary() {
 const els = {};
 let seen = new Set();
 
-const TASK_ICONS = ["📚", "💼", "📖", "🧮", "✏️", "🎯", "📝", "🔬"];
+const CATEGORY_ICONS = {
+  "プログラミング": "💻",
+  "学習":           "📚",
+  "就活":           "💼",
+  "読書":           "📖",
+  "その他":         "📝",
+  "未分類":         "🗂️",
+};
 
 function renderSummary() {
-  const { done, total, ratio } = getProgressSummary();
+  // 達成率は今日のタスクのみで計算
+  const today = getTodayDate();
+  const todayTasks = tasks.filter((t) => t.date === today);
+  const total = todayTasks.length;
+  const done  = todayTasks.filter((t) => t.done).length;
+  const ratio = total === 0 ? 0 : Math.round((done / total) * 100);
 
   if (els.count) els.count.textContent = `${done} / ${total} 完了`;
   if (els.bar)   els.bar.style.width = `${ratio}%`;
-  if (els.empty) els.empty.hidden = total !== 0;
 
   if (els.achievementPct) els.achievementPct.textContent = `${ratio}%`;
   if (els.achievementCircle) {
@@ -100,9 +111,28 @@ function renderSummary() {
   }
 }
 
+function formatTimeRange(startTime, endTime) {
+  if (startTime && endTime) return `${startTime} - ${endTime}`;
+  if (startTime) return startTime;
+  return "";
+}
+
 function renderList() {
   els.list.innerHTML = "";
-  const current = getTasks();
+
+  // 今日のタスクだけ取り出して開始時間順に並べる
+  const today = getTodayDate();
+  const current = getTasks()
+    .filter((t) => t.date === today)
+    .sort((a, b) => {
+      if (!a.startTime && !b.startTime) return 0;
+      if (!a.startTime) return 1;
+      if (!b.startTime) return -1;
+      return a.startTime.localeCompare(b.startTime);
+    });
+
+  if (els.empty) els.empty.hidden = current.length !== 0;
+
   const prevSeen = seen;
   seen = new Set();
   let newIdx = 0;
@@ -118,14 +148,18 @@ function renderList() {
     }
     seen.add(task.id);
 
-    const check = node.querySelector(".task__check");
-    const title = node.querySelector(".task__title");
-    const range = node.querySelector(".task__range");
-    const pct   = node.querySelector(".task__pct");
-    const del   = node.querySelector(".task__delete");
+    const check    = node.querySelector(".task__check");
+    const timeEl   = node.querySelector(".task__time");
+    const title    = node.querySelector(".task__title");
+    const category = node.querySelector(".task__category");
+    const range    = node.querySelector(".task__range");
+    const pct      = node.querySelector(".task__pct");
+    const del      = node.querySelector(".task__delete");
 
     check.checked = task.done;
-    title.textContent = task.title;
+    timeEl.textContent   = formatTimeRange(task.startTime, task.endTime);
+    title.textContent    = task.title;
+    category.textContent = task.category || "";
     range.value = task.progress;
     range.style.setProperty("--fill", `${task.progress}%`);
     pct.textContent = `${task.progress}%`;
@@ -161,8 +195,7 @@ function renderProgressList() {
   if (!els.progressList) return;
   els.progressList.innerHTML = "";
 
-  const current = getTasks();
-  if (current.length === 0) {
+  if (tasks.length === 0) {
     const msg = document.createElement("p");
     msg.style.cssText = "text-align:center;color:var(--ink-soft);padding:24px;font-size:14px;";
     msg.textContent = "タスクがありません";
@@ -170,7 +203,23 @@ function renderProgressList() {
     return;
   }
 
-  current.forEach((task, i) => {
+  // カテゴリごとに集計
+  const categoryMap = {};
+  tasks.forEach((task) => {
+    const cat = task.category || "未分類";
+    if (!categoryMap[cat]) categoryMap[cat] = { total: 0, done: 0 };
+    categoryMap[cat].total++;
+    if (task.done) categoryMap[cat].done++;
+  });
+
+  // 達成率が高い順に表示
+  const sorted = Object.entries(categoryMap).sort(
+    ([, a], [, b]) => (b.done / b.total) - (a.done / a.total)
+  );
+
+  sorted.forEach(([category, { total, done }]) => {
+    const percentage = Math.round((done / total) * 100);
+
     const item = document.createElement("div");
     item.className = "progress-item";
 
@@ -179,18 +228,28 @@ function renderProgressList() {
 
     const icon = document.createElement("div");
     icon.className = "progress-item__icon";
-    icon.textContent = TASK_ICONS[i % TASK_ICONS.length];
+    icon.textContent = CATEGORY_ICONS[category] ?? "📝";
+
+    const nameWrap = document.createElement("div");
+    nameWrap.style.cssText = "flex:1;min-width:0;";
 
     const name = document.createElement("span");
     name.className = "progress-item__name";
-    name.textContent = task.title;
+    name.textContent = category;
+
+    const sub = document.createElement("p");
+    sub.style.cssText = "font-size:11px;color:var(--ink-soft);margin-top:1px;";
+    sub.textContent = `${done} / ${total} 完了`;
+
+    nameWrap.appendChild(name);
+    nameWrap.appendChild(sub);
 
     const pctEl = document.createElement("span");
     pctEl.className = "progress-item__pct";
-    pctEl.textContent = `${task.progress}%`;
+    pctEl.textContent = `${percentage}%`;
 
     head.appendChild(icon);
-    head.appendChild(name);
+    head.appendChild(nameWrap);
     head.appendChild(pctEl);
 
     const track = document.createElement("div");
@@ -198,7 +257,7 @@ function renderProgressList() {
 
     const fill = document.createElement("div");
     fill.className = "progress-item__fill";
-    fill.style.width = `${task.progress}%`;
+    fill.style.width = `${percentage}%`;
 
     track.appendChild(fill);
     item.appendChild(head);

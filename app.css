@@ -321,6 +321,35 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* 時間表示（9:00 - 10:00） */
+.task__time {
+  font-size: 11px;
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+
+.task__time:empty { display: none; }
+
+/* カテゴリチップ（タスクカード内） */
+.task__category {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 10px;
+  border-radius: 99px;
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  font-weight: 600;
+}
+
+.task__category:empty { display: none; }
+
+/* フッター：カテゴリ + 進捗スライダーを縦に並べる */
+.task-card__footer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .task__delete {
   flex: none;
   width: 30px;
