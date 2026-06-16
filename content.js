@@ -1,6 +1,27 @@
-const BLOCK_URLS = [
-  "https://www.youtube.com/",
-];
+// content.js
+
+let BLOCK_URLS = [];
+
+// ブロック対象URLを動的に読み込む
+function loadBlockedUrls() {
+  if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
+    chrome.storage.local.get(["blockedSites"], (result) => {
+      BLOCK_URLS = result?.blockedSites ?? [
+        "https://www.youtube.com/",
+        "chrome://extensions/",
+      ];
+    });
+  } else {
+    const data = localStorage.getItem("blockedSites");
+    BLOCK_URLS = data ? JSON.parse(data) : [
+      "https://www.youtube.com/",
+      "chrome://extensions/",
+    ];
+  }
+}
+
+// 初期読み込み
+loadBlockedUrls();
 
 function shouldBlockUrl(url, taskState) {
   if (!taskState?.studyMode || !taskState?.hasPendingTasks) return false;
@@ -43,8 +64,17 @@ chrome.runtime.sendMessage({ type: "GET_TASK_STATE" }, (taskState) => {
 });
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName !== "local" || (!changes.tasks && !changes.studyMode)) return;
-  loadStateAndHandle();
+  if (areaName !== "local") return;
+  
+  // blockedSites が変更されたら再読み込み
+  if (changes.blockedSites) {
+    loadBlockedUrls();
+  }
+  
+  // tasks か studyMode が変更されたら状態を再チェック
+  if (changes.tasks || changes.studyMode) {
+    loadStateAndHandle();
+  }
 });
 
 chrome.runtime.onMessage.addListener((message) => {
