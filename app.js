@@ -198,6 +198,9 @@ function renderList() {
 function renderAll() {
   renderList();
   renderSummary();
+  if (document.getElementById('view-tasks').classList.contains('active')) {
+    renderTasksContent();
+  }
 }
 
 // ====== マイページ（日/週/月）======
@@ -270,12 +273,34 @@ function renderDayView() {
   dayTasks.forEach(task => {
     const card = document.createElement('div');
     card.className = `period-task-card${task.done ? ' is-done' : ''}`;
+
+    const checkBtn = document.createElement('button');
+    checkBtn.className = 'period-task-card__check';
+    checkBtn.setAttribute('aria-label', task.done ? '完了を取り消す' : '完了にする');
+    checkBtn.addEventListener('click', async () => {
+      await toggleTask(task.id);
+      renderAll();
+    });
+
+    const body = document.createElement('div');
+    body.className = 'period-task-card__body';
+
+    const titleEl = document.createElement('div');
+    titleEl.className = 'period-task-card__title';
+    titleEl.textContent = task.title;
+    body.appendChild(titleEl);
+
     const meta = [task.category, formatTimeRange(task.startTime, task.endTime)]
       .filter(Boolean).join(' · ');
-    card.innerHTML = `
-      <div class="period-task-card__title">${task.title}</div>
-      ${meta ? `<div class="period-task-card__meta">${meta}</div>` : ''}
-    `;
+    if (meta) {
+      const metaEl = document.createElement('div');
+      metaEl.className = 'period-task-card__meta';
+      metaEl.textContent = meta;
+      body.appendChild(metaEl);
+    }
+
+    card.appendChild(checkBtn);
+    card.appendChild(body);
     list.appendChild(card);
   });
 
