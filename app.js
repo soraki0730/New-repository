@@ -441,10 +441,53 @@ function renderMonthView() {
   content.appendChild(wrapper);
 }
 
+// ====== 時間入力フォーマット ======
+
+function setupTimeInput(input) {
+  // 3桁目を打った瞬間にコロンを自動挿入
+  input.addEventListener('input', () => {
+    const digits = input.value.replace(/[^0-9]/g, '');
+    if (digits.length >= 3) {
+      input.value = digits.slice(0, 2) + ':' + digits.slice(2, 4);
+    }
+  });
+
+  // フォーカスを外したときに "1800" → "18:00" に整形
+  input.addEventListener('blur', () => {
+    const val = input.value.trim();
+    if (!val) return;
+    const digits = val.replace(/[^0-9]/g, '');
+    if (!digits) { input.value = ''; return; }
+
+    const h = digits.length <= 2 ? parseInt(digits) : parseInt(digits.slice(0, 2));
+    const m = digits.length <= 2 ? 0                : parseInt(digits.slice(2, 4) || '0');
+
+    if (h >= 0 && h <= 23 && m >= 0 && m <= 59) {
+      input.value = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    } else {
+      input.value = '';
+    }
+  });
+}
+
+function getDefaultTimes() {
+  const now = new Date();
+  // 分が1以上なら切り上げ、0なら現在の時刻のまま
+  const startHour = now.getMinutes() > 0 ? (now.getHours() + 1) % 24 : now.getHours();
+  const endHour   = (startHour + 1) % 24;
+  return {
+    start: `${String(startHour).padStart(2, '0')}:00`,
+    end:   `${String(endHour).padStart(2, '0')}:00`,
+  };
+}
+
 // ====== モーダル ======
 
 function openModal(defaultDate) {
   els.taskDate.value = defaultDate || getTodayDate();
+  const { start, end } = getDefaultTimes();
+  els.taskStartTime.value = start;
+  els.taskEndTime.value   = end;
   els.modal.classList.add("active");
   setTimeout(() => els.input.focus(), 50);
 }
@@ -556,6 +599,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   els.taskEndTime       = document.getElementById("task-end-time");
   els.blockUrlList      = document.getElementById("block-url-list");
   els.blockUrlInput     = document.getElementById("block-url-input");
+
+  // 時間入力フォーマット設定
+  setupTimeInput(els.taskStartTime);
+  setupTimeInput(els.taskEndTime);
 
   // カテゴリチップ（再クリックで解除）
   document.querySelectorAll(".category-chip").forEach((chip) => {
