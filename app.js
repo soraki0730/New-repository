@@ -443,8 +443,8 @@ function renderMonthView() {
 
 // ====== モーダル ======
 
-function openModal() {
-  els.taskDate.value = getTodayDate();
+function openModal(defaultDate) {
+  els.taskDate.value = defaultDate || getTodayDate();
   els.modal.classList.add("active");
   setTimeout(() => els.input.focus(), 50);
 }
@@ -567,8 +567,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   // タスク追加
-  document.getElementById("add-btn").addEventListener("click", openModal);
-  document.getElementById("add-btn-tasks").addEventListener("click", openModal);
+  document.getElementById("add-btn").addEventListener("click", () => openModal());
+  document.getElementById("add-btn-tasks").addEventListener("click", () => openModal(dateToStr(navDate)));
   document.getElementById("modal-cancel").addEventListener("click", closeModal);
   document.getElementById("modal-submit").addEventListener("click", handleAdd);
 
