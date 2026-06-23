@@ -300,8 +300,23 @@ function renderDayView() {
       body.appendChild(metaEl);
     }
 
+    const delBtn = document.createElement('button');
+    delBtn.className = 'period-task-card__delete';
+    delBtn.textContent = '×';
+    delBtn.setAttribute('aria-label', '削除');
+    delBtn.addEventListener('click', async () => {
+      card.style.opacity = '0';
+      card.style.transform = 'translateX(12px)';
+      card.style.transition = 'opacity 0.18s, transform 0.18s';
+      setTimeout(async () => {
+        await deleteTask(task.id);
+        renderAll();
+      }, 180);
+    });
+
     card.appendChild(checkBtn);
     card.appendChild(body);
+    card.appendChild(delBtn);
     list.appendChild(card);
   });
 
