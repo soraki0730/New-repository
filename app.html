@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
@@ -14,10 +14,8 @@
   </head>
   <body>
     <div class="app-frame">
-
       <!-- ===== VIEW: ホーム ===== -->
       <div class="view view--home active" id="view-home">
-
         <header class="app-header">
           <div class="user-row">
             <div class="user-slot">
@@ -37,7 +35,12 @@
               <span class="user-name">Yuto</span>
             </div>
             <div class="user-slot">
-              <div class="user-avatar user-avatar--add" aria-label="メンバーを追加">＋</div>
+              <div
+                class="user-avatar user-avatar--add"
+                aria-label="メンバーを追加"
+              >
+                ＋
+              </div>
               <span class="user-name">追加</span>
             </div>
           </div>
@@ -60,7 +63,15 @@
         <div class="section">
           <h3 class="section__head">
             今日のタスク
-            <span id="progress-count" style="font-size:13px;color:var(--ink-soft);font-weight:400;margin-left:6px;"></span>
+            <span
+              id="progress-count"
+              style="
+                font-size: 13px;
+                color: var(--ink-soft);
+                font-weight: 400;
+                margin-left: 6px;
+              "
+            ></span>
           </h3>
           <ul id="task-list" class="task-list" aria-label="タスク一覧"></ul>
           <p id="empty-state" class="empty-state" hidden>
@@ -82,29 +93,36 @@
 
       <!-- ===== VIEW: タスク（カテゴリ別進捗）===== -->
       <div class="view view--tasks" id="view-tasks">
-
         <div class="tasks-view-header">
           <div class="tasks-view-header__top">
             <h2>マイページ</h2>
-            <span style="font-size:22px;">📈</span>
+            <span style="font-size: 22px">📈</span>
+          </div>
+          <div class="period-nav">
+            <button class="period-nav__btn" id="tasks-prev" type="button">‹</button>
+            <span class="period-nav__label" id="tasks-period-label"></span>
+            <button class="period-nav__btn" id="tasks-next" type="button">›</button>
           </div>
           <div class="tab-bar">
-            <button class="tab-btn active">今日</button>
-            <button class="tab-btn">今週</button>
-            <button class="tab-btn">今月</button>
+            <button class="tab-btn active" type="button" id="tab-day">日</button>
+            <button class="tab-btn" type="button" id="tab-week">週</button>
+            <button class="tab-btn" type="button" id="tab-month">月</button>
           </div>
         </div>
 
-        <p class="progress-section-label">科目・タスクの進捗</p>
-        <div class="progress-list" id="progress-list" aria-label="タスク進捗一覧"></div>
+        <div id="tasks-content"></div>
 
-        <button class="add-fab" id="add-btn-tasks" style="margin-top:16px;">＋ 科目・タスクを追加</button>
+        <button class="add-fab" id="add-btn-tasks" style="margin-top: 16px">
+          ＋ 科目・タスクを追加
+        </button>
 
         <div class="focus-banner">
           <div class="focus-banner__icon">🛡️</div>
           <div class="focus-banner__text">
             <h4>集中ブロック設定</h4>
-            <p>集中を妨げるアプリやURLを登録して、学習の邪魔をブロックしましょう。</p>
+            <p>
+              集中を妨げるアプリやURLを登録して、学習の邪魔をブロックしましょう。
+            </p>
           </div>
           <span class="focus-banner__arrow">›</span>
         </div>
@@ -120,7 +138,6 @@
 
       <!-- ===== VIEW: 設定 ===== -->
       <div class="view view--settings" id="view-settings">
-
         <div class="settings-header">
           <h2>設定</h2>
         </div>
@@ -130,7 +147,9 @@
           <div class="settings-row">
             <div>
               <p class="settings-row__label">スタディモード</p>
-              <p class="settings-row__sub">ONにすると学習中にサイトをブロックします</p>
+              <p class="settings-row__sub">
+                ONにすると学習中にサイトをブロックします
+              </p>
             </div>
             <label class="toggle" aria-label="スタディモード切替">
               <input type="checkbox" id="study-mode-toggle" />
@@ -148,19 +167,28 @@
               id="block-url-input"
               placeholder="https://www.youtube.com/"
             />
-            <button class="block-url-add__btn" id="block-url-add-btn">追加</button>
+            <button class="block-url-add__btn" id="block-url-add-btn">
+              追加
+            </button>
           </div>
         </div>
-
       </div>
 
       <!-- ===== タスク追加モーダル ===== -->
-      <div class="modal-overlay" id="add-modal" role="dialog" aria-modal="true" aria-label="タスク追加">
+      <div
+        class="modal-overlay"
+        id="add-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="タスク追加"
+      >
         <div class="modal-sheet">
           <div class="modal-sheet__head">
-            <button class="modal-sheet__cancel" id="modal-cancel">キャンセル</button>
+            <button class="modal-sheet__cancel" id="modal-cancel">
+              キャンセル
+            </button>
             <h2 class="modal-sheet__title">タスク追加</h2>
-            <div style="width:70px;"></div>
+            <div style="width: 70px"></div>
           </div>
 
           <!-- タスク名 -->
@@ -176,13 +204,27 @@
 
           <!-- カテゴリ -->
           <div class="modal-field">
-            <label>カテゴリ</label>
+            <label>カテゴリ <span style="font-size:12px;color:var(--ink-soft);font-weight:400;">(任意)</span></label>
             <div class="category-chips" id="category-chips">
-              <button class="category-chip" type="button" data-value="プログラミング">プログラミング</button>
-              <button class="category-chip" type="button" data-value="学習">学習</button>
-              <button class="category-chip" type="button" data-value="就活">就活</button>
-              <button class="category-chip" type="button" data-value="読書">読書</button>
-              <button class="category-chip" type="button" data-value="その他">その他</button>
+              <button
+                class="category-chip"
+                type="button"
+                data-value="プログラミング"
+              >
+                プログラミング
+              </button>
+              <button class="category-chip" type="button" data-value="学習">
+                学習
+              </button>
+              <button class="category-chip" type="button" data-value="就活">
+                就活
+              </button>
+              <button class="category-chip" type="button" data-value="読書">
+                読書
+              </button>
+              <button class="category-chip" type="button" data-value="その他">
+                その他
+              </button>
             </div>
           </div>
 
@@ -196,11 +238,11 @@
           <div class="modal-field-row">
             <div class="modal-field">
               <label for="task-start-time">開始時間</label>
-              <input id="task-start-time" type="time" />
+              <input id="task-start-time" type="text" inputmode="numeric" placeholder="例）1800" autocomplete="off" />
             </div>
             <div class="modal-field">
               <label for="task-end-time">終了時間</label>
-              <input id="task-end-time" type="time" />
+              <input id="task-end-time" type="text" inputmode="numeric" placeholder="例）1900" autocomplete="off" />
             </div>
           </div>
 
@@ -221,12 +263,21 @@
             <div class="task-card__footer">
               <span class="task__category"></span>
               <div class="task-card__progress">
-                <input class="task__range" type="range" min="0" max="100" step="5" aria-label="進捗" />
+                <input
+                  class="task__range"
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  aria-label="進捗"
+                />
                 <span class="task__pct">0%</span>
               </div>
             </div>
           </div>
-          <button class="task__delete" type="button" aria-label="削除">×</button>
+          <button class="task__delete" type="button" aria-label="削除">
+            ×
+          </button>
         </li>
       </template>
 

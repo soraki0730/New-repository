@@ -1,17 +1,28 @@
 /* =========================================================
    app.js  ―  ロジック担当（A・B担当）
-   契約（名前は勝手に変えない）：
-     addTask(title)          → Promise<Task[]>
-     toggleTask(id)          → Promise<Task[]>
-     deleteTask(id)          → Promise<Task[]>
-     getTasks()              → Task[]
-     setProgress(id, percent)→ Promise<Task[]>
    ========================================================= */
 
-let tasks = [];
+let tasks    = [];
+let tasksTab = 'day'; // 'day' | 'week' | 'month'
+let navDate  = new Date();
+
+// ====== 日付ユーティリティ ======
+
+function dateToStr(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
 
 function getTodayDate() {
-  return new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+  return dateToStr(new Date());
+}
+
+function getWeekStart(date) {
+  const d = new Date(date);
+  d.setDate(d.getDate() - d.getDay()); // 日曜始まり
+  return d;
 }
 
 function makeTask(title, { category = "", date = "", startTime = "", endTime = "" } = {}) {
@@ -71,13 +82,6 @@ function getTasks() {
   return tasks;
 }
 
-function getProgressSummary() {
-  const total = tasks.length;
-  const done = tasks.filter((x) => x.done).length;
-  const ratio = total === 0 ? 0 : Math.round((done / total) * 100);
-  return { done, total, ratio };
-}
-
 // ====== 描画 ======
 
 const els = {};
@@ -92,8 +96,9 @@ const CATEGORY_ICONS = {
   "未分類":         "🗂️",
 };
 
+const DAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
+
 function renderSummary() {
-  // 達成率は今日のタスクのみで計算
   const today = getTodayDate();
   const todayTasks = tasks.filter((t) => t.date === today);
   const total = todayTasks.length;
@@ -120,7 +125,6 @@ function formatTimeRange(startTime, endTime) {
 function renderList() {
   els.list.innerHTML = "";
 
-  // 今日のタスクだけ取り出して開始時間順に並べる
   const today = getTodayDate();
   const current = getTasks()
     .filter((t) => t.date === today)
@@ -191,91 +195,314 @@ function renderList() {
   });
 }
 
-function renderProgressList() {
-  if (!els.progressList) return;
-  els.progressList.innerHTML = "";
-
-  if (tasks.length === 0) {
-    const msg = document.createElement("p");
-    msg.style.cssText = "text-align:center;color:var(--ink-soft);padding:24px;font-size:14px;";
-    msg.textContent = "タスクがありません";
-    els.progressList.appendChild(msg);
-    return;
-  }
-
-  // カテゴリごとに集計
-  const categoryMap = {};
-  tasks.forEach((task) => {
-    const cat = task.category || "未分類";
-    if (!categoryMap[cat]) categoryMap[cat] = { total: 0, done: 0 };
-    categoryMap[cat].total++;
-    if (task.done) categoryMap[cat].done++;
-  });
-
-  // 達成率が高い順に表示
-  const sorted = Object.entries(categoryMap).sort(
-    ([, a], [, b]) => (b.done / b.total) - (a.done / a.total)
-  );
-
-  sorted.forEach(([category, { total, done }]) => {
-    const percentage = Math.round((done / total) * 100);
-
-    const item = document.createElement("div");
-    item.className = "progress-item";
-
-    const head = document.createElement("div");
-    head.className = "progress-item__head";
-
-    const icon = document.createElement("div");
-    icon.className = "progress-item__icon";
-    icon.textContent = CATEGORY_ICONS[category] ?? "📝";
-
-    const nameWrap = document.createElement("div");
-    nameWrap.style.cssText = "flex:1;min-width:0;";
-
-    const name = document.createElement("span");
-    name.className = "progress-item__name";
-    name.textContent = category;
-
-    const sub = document.createElement("p");
-    sub.style.cssText = "font-size:11px;color:var(--ink-soft);margin-top:1px;";
-    sub.textContent = `${done} / ${total} 完了`;
-
-    nameWrap.appendChild(name);
-    nameWrap.appendChild(sub);
-
-    const pctEl = document.createElement("span");
-    pctEl.className = "progress-item__pct";
-    pctEl.textContent = `${percentage}%`;
-
-    head.appendChild(icon);
-    head.appendChild(nameWrap);
-    head.appendChild(pctEl);
-
-    const track = document.createElement("div");
-    track.className = "progress-item__track";
-
-    const fill = document.createElement("div");
-    fill.className = "progress-item__fill";
-    fill.style.width = `${percentage}%`;
-
-    track.appendChild(fill);
-    item.appendChild(head);
-    item.appendChild(track);
-    els.progressList.appendChild(item);
-  });
-}
-
 function renderAll() {
   renderList();
   renderSummary();
-  renderProgressList();
+  if (document.getElementById('view-tasks').classList.contains('active')) {
+    renderTasksContent();
+  }
+}
+
+// ====== マイページ（日/週/月）======
+
+function updatePeriodLabel() {
+  const label = document.getElementById('tasks-period-label');
+  if (!label) return;
+  if (tasksTab === 'day') {
+    label.textContent =
+      `${navDate.getFullYear()}年${navDate.getMonth() + 1}月${navDate.getDate()}日`;
+  } else if (tasksTab === 'week') {
+    const start = new Date(navDate);
+    start.setDate(navDate.getDate() - 2);
+    const end = new Date(navDate);
+    end.setDate(navDate.getDate() + 4);
+    label.textContent =
+      `${start.getMonth() + 1}/${start.getDate()} 〜 ${end.getMonth() + 1}/${end.getDate()}`;
+  } else {
+    label.textContent = `${navDate.getFullYear()}年${navDate.getMonth() + 1}月`;
+  }
+}
+
+function renderTasksContent() {
+  updatePeriodLabel();
+  if (tasksTab === 'day')       renderDayView();
+  else if (tasksTab === 'week') renderWeekView();
+  else                          renderMonthView();
+}
+
+function navigatePeriod(dir) {
+  const d = new Date(navDate);
+  if (tasksTab === 'day')       d.setDate(d.getDate() + dir);
+  else if (tasksTab === 'week') d.setDate(d.getDate() + dir * 7);
+  else                          d.setMonth(d.getMonth() + dir);
+  navDate = d;
+  renderTasksContent();
+}
+
+function jumpToDay(date) {
+  navDate  = new Date(date);
+  tasksTab = 'day';
+  document.querySelectorAll('#view-tasks .tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-day').classList.add('active');
+  renderTasksContent();
+}
+
+function renderDayView() {
+  const content = document.getElementById('tasks-content');
+  if (!content) return;
+
+  const dateStr  = dateToStr(navDate);
+  const dayTasks = tasks
+    .filter(t => t.date === dateStr)
+    .sort((a, b) => {
+      if (!a.startTime && !b.startTime) return 0;
+      if (!a.startTime) return 1;
+      if (!b.startTime) return -1;
+      return a.startTime.localeCompare(b.startTime);
+    });
+
+  content.innerHTML = '';
+
+  if (dayTasks.length === 0) {
+    content.innerHTML = '<p class="period-empty">この日のタスクはありません</p>';
+    return;
+  }
+
+  const list = document.createElement('div');
+  list.style.cssText = 'padding:16px;display:flex;flex-direction:column;gap:10px;';
+
+  dayTasks.forEach(task => {
+    const card = document.createElement('div');
+    card.className = `period-task-card${task.done ? ' is-done' : ''}`;
+
+    const checkBtn = document.createElement('button');
+    checkBtn.className = 'period-task-card__check';
+    checkBtn.setAttribute('aria-label', task.done ? '完了を取り消す' : '完了にする');
+    checkBtn.addEventListener('click', async () => {
+      await toggleTask(task.id);
+      renderAll();
+    });
+
+    const body = document.createElement('div');
+    body.className = 'period-task-card__body';
+
+    const titleEl = document.createElement('div');
+    titleEl.className = 'period-task-card__title';
+    titleEl.textContent = task.title;
+    body.appendChild(titleEl);
+
+    const meta = [task.category, formatTimeRange(task.startTime, task.endTime)]
+      .filter(Boolean).join(' · ');
+    if (meta) {
+      const metaEl = document.createElement('div');
+      metaEl.className = 'period-task-card__meta';
+      metaEl.textContent = meta;
+      body.appendChild(metaEl);
+    }
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'period-task-card__delete';
+    delBtn.textContent = '×';
+    delBtn.setAttribute('aria-label', '削除');
+    delBtn.addEventListener('click', async () => {
+      card.style.opacity = '0';
+      card.style.transform = 'translateX(12px)';
+      card.style.transition = 'opacity 0.18s, transform 0.18s';
+      setTimeout(async () => {
+        await deleteTask(task.id);
+        renderAll();
+      }, 180);
+    });
+
+    card.appendChild(checkBtn);
+    card.appendChild(body);
+    card.appendChild(delBtn);
+    list.appendChild(card);
+  });
+
+  content.appendChild(list);
+}
+
+function renderWeekView() {
+  const content = document.getElementById('tasks-content');
+  if (!content) return;
+
+  const weekStart = new Date(navDate);
+  weekStart.setDate(navDate.getDate() - 2);
+  const today = getTodayDate();
+
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = 'padding:16px;';
+
+  const grid = document.createElement('div');
+  grid.className = 'week-calendar-grid';
+
+  for (let i = 0; i < 7; i++) {
+    const d        = new Date(weekStart);
+    d.setDate(weekStart.getDate() + i);
+    const dateStr  = dateToStr(d);
+    const dayTasks = tasks.filter(t => t.date === dateStr);
+    const isToday  = dateStr === today;
+
+    const card = document.createElement('div');
+    card.className = `week-day-card${isToday ? ' is-today' : ''}`;
+    card.style.cursor = 'pointer';
+
+    const dateLabel = document.createElement('div');
+    dateLabel.className = 'week-day-card__date';
+    dateLabel.textContent = `${DAY_LABELS[d.getDay()]} ${d.getDate()}`;
+
+    const taskList = document.createElement('div');
+    taskList.className = 'week-day-card__tasks';
+
+    if (dayTasks.length === 0) {
+      const empty = document.createElement('span');
+      empty.style.cssText = 'font-size:11px;color:var(--ink-soft);';
+      empty.textContent = 'なし';
+      taskList.appendChild(empty);
+    } else {
+      dayTasks.forEach(task => {
+        const chip = document.createElement('span');
+        chip.className = `calendar-task-chip${task.done ? ' is-done' : ''}`;
+        chip.textContent = task.title;
+        taskList.appendChild(chip);
+      });
+    }
+
+    card.appendChild(dateLabel);
+    card.appendChild(taskList);
+    card.addEventListener('click', () => jumpToDay(d));
+    grid.appendChild(card);
+  }
+
+  wrapper.appendChild(grid);
+  content.innerHTML = '';
+  content.appendChild(wrapper);
+}
+
+function renderMonthView() {
+  const content = document.getElementById('tasks-content');
+  if (!content) return;
+
+  const year  = navDate.getFullYear();
+  const month = navDate.getMonth();
+  const today = getTodayDate();
+
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = 'padding:16px;';
+
+  const cal = document.createElement('div');
+  cal.className = 'month-calendar';
+
+  const weekdayRow = document.createElement('div');
+  weekdayRow.className = 'month-calendar__weekdays';
+  DAY_LABELS.forEach(d => {
+    const span = document.createElement('span');
+    span.className = 'month-calendar__weekday';
+    span.textContent = d;
+    weekdayRow.appendChild(span);
+  });
+
+  const grid = document.createElement('div');
+  grid.className = 'month-calendar__grid';
+
+  const firstDay  = new Date(year, month, 1);
+  const startDate = new Date(year, month, 1 - firstDay.getDay());
+
+  for (let i = 0; i < 42; i++) {
+    const d        = new Date(startDate);
+    d.setDate(startDate.getDate() + i);
+    const dateStr  = dateToStr(d);
+    const dayTasks = tasks.filter(t => t.date === dateStr);
+    const isOutside = d.getMonth() !== month;
+    const isToday   = dateStr === today;
+
+    const cell = document.createElement('div');
+    cell.className = [
+      'month-calendar__day',
+      isOutside ? 'is-outside' : '',
+      isToday   ? 'is-today'   : '',
+    ].filter(Boolean).join(' ');
+    cell.style.cursor = 'pointer';
+
+    const dateLabel = document.createElement('div');
+    dateLabel.className = 'month-calendar__date';
+    dateLabel.textContent = d.getDate();
+    cell.appendChild(dateLabel);
+
+    dayTasks.slice(0, 2).forEach(task => {
+      const chip = document.createElement('span');
+      chip.className = `calendar-task-chip${task.done ? ' is-done' : ''}`;
+      chip.textContent = task.title;
+      cell.appendChild(chip);
+    });
+
+    if (dayTasks.length > 2) {
+      const more = document.createElement('span');
+      more.className = 'calendar-task-chip';
+      more.style.cssText = 'color:var(--ink-soft);background:transparent;font-size:10px;padding:0 6px;';
+      more.textContent = `+${dayTasks.length - 2}件`;
+      cell.appendChild(more);
+    }
+
+    cell.addEventListener('click', () => jumpToDay(d));
+    grid.appendChild(cell);
+  }
+
+  cal.appendChild(weekdayRow);
+  cal.appendChild(grid);
+  wrapper.appendChild(cal);
+  content.innerHTML = '';
+  content.appendChild(wrapper);
+}
+
+// ====== 時間入力フォーマット ======
+
+function setupTimeInput(input) {
+  // 3桁目を打った瞬間にコロンを自動挿入
+  input.addEventListener('input', () => {
+    const digits = input.value.replace(/[^0-9]/g, '');
+    if (digits.length >= 3) {
+      input.value = digits.slice(0, 2) + ':' + digits.slice(2, 4);
+    }
+  });
+
+  // フォーカスを外したときに "1800" → "18:00" に整形
+  input.addEventListener('blur', () => {
+    const val = input.value.trim();
+    if (!val) return;
+    const digits = val.replace(/[^0-9]/g, '');
+    if (!digits) { input.value = ''; return; }
+
+    const h = digits.length <= 2 ? parseInt(digits) : parseInt(digits.slice(0, 2));
+    const m = digits.length <= 2 ? 0                : parseInt(digits.slice(2, 4) || '0');
+
+    if (h >= 0 && h <= 23 && m >= 0 && m <= 59) {
+      input.value = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    } else {
+      input.value = '';
+    }
+  });
+}
+
+function getDefaultTimes() {
+  const now = new Date();
+  // 分が1以上なら切り上げ、0なら現在の時刻のまま
+  const startHour = now.getMinutes() > 0 ? (now.getHours() + 1) % 24 : now.getHours();
+  const endHour   = (startHour + 1) % 24;
+  return {
+    start: `${String(startHour).padStart(2, '0')}:00`,
+    end:   `${String(endHour).padStart(2, '0')}:00`,
+  };
 }
 
 // ====== モーダル ======
 
-function openModal() {
-  els.taskDate.value = getTodayDate();
+function openModal(defaultDate) {
+  els.taskDate.value = defaultDate || getTodayDate();
+  const { start, end } = getDefaultTimes();
+  els.taskStartTime.value = start;
+  els.taskEndTime.value   = end;
   els.modal.classList.add("active");
   setTimeout(() => els.input.focus(), 50);
 }
@@ -318,10 +545,10 @@ function switchView(viewName) {
   const btn = document.querySelector(`.nav-btn[data-view="${viewName}"]`);
   if (btn) btn.classList.add("active");
 
-  if (viewName === "tasks") renderProgressList();
+  if (viewName === "tasks") renderTasksContent();
 }
 
-// ====== 設定タブ UI（保存は Role C が担当）======
+// ====== 設定タブ UI ======
 
 let blockUrls = ["https://www.youtube.com/"];
 
@@ -382,24 +609,28 @@ document.addEventListener("DOMContentLoaded", async () => {
   els.modal             = document.getElementById("add-modal");
   els.achievementPct    = document.getElementById("achievement-pct");
   els.achievementCircle = document.getElementById("achievement-circle");
-  els.progressList      = document.getElementById("progress-list");
   els.taskDate          = document.getElementById("task-date");
   els.taskStartTime     = document.getElementById("task-start-time");
   els.taskEndTime       = document.getElementById("task-end-time");
   els.blockUrlList      = document.getElementById("block-url-list");
   els.blockUrlInput     = document.getElementById("block-url-input");
 
-  // カテゴリチップ：1つだけ選択できる
+  // 時間入力フォーマット設定
+  setupTimeInput(els.taskStartTime);
+  setupTimeInput(els.taskEndTime);
+
+  // カテゴリチップ（再クリックで解除）
   document.querySelectorAll(".category-chip").forEach((chip) => {
     chip.addEventListener("click", () => {
+      const wasSelected = chip.classList.contains("selected");
       document.querySelectorAll(".category-chip").forEach((c) => c.classList.remove("selected"));
-      chip.classList.add("selected");
+      if (!wasSelected) chip.classList.add("selected");
     });
   });
 
   // タスク追加
-  document.getElementById("add-btn").addEventListener("click", openModal);
-  document.getElementById("add-btn-tasks").addEventListener("click", openModal);
+  document.getElementById("add-btn").addEventListener("click", () => openModal());
+  document.getElementById("add-btn-tasks").addEventListener("click", () => openModal(dateToStr(navDate)));
   document.getElementById("modal-cancel").addEventListener("click", closeModal);
   document.getElementById("modal-submit").addEventListener("click", handleAdd);
 
@@ -412,9 +643,38 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (e.target === els.modal) closeModal();
   });
 
-  // ナビゲーション
+  // ボトムナビゲーション
   document.querySelectorAll(".nav-btn").forEach((btn) => {
     btn.addEventListener("click", () => switchView(btn.dataset.view));
+  });
+
+  // マイページ タブ切替
+  document.getElementById("tab-day").addEventListener("click", () => {
+    tasksTab = 'day';
+    document.querySelectorAll('#view-tasks .tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-day').classList.add('active');
+    renderTasksContent();
+  });
+  document.getElementById("tab-week").addEventListener("click", () => {
+    tasksTab = 'week';
+    document.querySelectorAll('#view-tasks .tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-week').classList.add('active');
+    renderTasksContent();
+  });
+  document.getElementById("tab-month").addEventListener("click", () => {
+    tasksTab = 'month';
+    document.querySelectorAll('#view-tasks .tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-month').classList.add('active');
+    renderTasksContent();
+  });
+
+  // 期間ナビゲーション矢印
+  document.getElementById("tasks-prev").addEventListener("click", () => navigatePeriod(-1));
+  document.getElementById("tasks-next").addEventListener("click", () => navigatePeriod(+1));
+
+  // フォーカスバナー → 設定画面
+  document.querySelectorAll(".focus-banner").forEach((el) => {
+    el.addEventListener("click", () => switchView("settings"));
   });
 
   // 設定：ブロックURL
