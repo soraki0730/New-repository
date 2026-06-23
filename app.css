@@ -742,6 +742,38 @@ body {
   border-radius: 99px;
   transition: width 0.4s ease;
 }
+/* ===== PERIOD NAV（矢印ナビゲーション）===== */
+.period-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.period-nav__btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  padding: 4px 12px;
+  border-radius: 10px;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s;
+}
+
+.period-nav__btn:hover {
+  background: var(--line);
+  color: var(--ink);
+}
+
+.period-nav__label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
 /* ===== PERIOD TASK PANEL ===== */
 .period-panel {
   margin: 16px;
