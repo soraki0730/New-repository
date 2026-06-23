@@ -212,9 +212,10 @@ function updatePeriodLabel() {
     label.textContent =
       `${navDate.getFullYear()}年${navDate.getMonth() + 1}月${navDate.getDate()}日`;
   } else if (tasksTab === 'week') {
-    const start = getWeekStart(navDate);
-    const end   = new Date(start);
-    end.setDate(start.getDate() + 6);
+    const start = new Date(navDate);
+    start.setDate(navDate.getDate() - 2);
+    const end = new Date(navDate);
+    end.setDate(navDate.getDate() + 4);
     label.textContent =
       `${start.getMonth() + 1}/${start.getDate()} 〜 ${end.getMonth() + 1}/${end.getDate()}`;
   } else {
@@ -311,8 +312,9 @@ function renderWeekView() {
   const content = document.getElementById('tasks-content');
   if (!content) return;
 
-  const weekStart = getWeekStart(navDate);
-  const today     = getTodayDate();
+  const weekStart = new Date(navDate);
+  weekStart.setDate(navDate.getDate() - 2);
+  const today = getTodayDate();
 
   const wrapper = document.createElement('div');
   wrapper.style.cssText = 'padding:16px;';
