@@ -39,6 +39,35 @@ body {
   flex-direction: column;
 }
 
+/* Firebase sync status badge (small, non-intrusive) */
+#firebase-sync-status.firebase-status {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 6px 10px;
+  font-size: 12px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.06);
+  color: var(--ink);
+  box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+  z-index: 120;
+}
+
+#firebase-sync-status.connecting {
+  background: linear-gradient(90deg, #fff7e6, #fff3d6);
+  color: #8a6d00;
+}
+
+#firebase-sync-status.success {
+  background: linear-gradient(90deg, #e8f5e9, #e0f2f1);
+  color: #2e7d32;
+}
+
+#firebase-sync-status.error {
+  background: linear-gradient(90deg, #ffebee, #ffdde0);
+  color: #c62828;
+}
+
 /* ===== VIEWS ===== */
 .view {
   display: none;
