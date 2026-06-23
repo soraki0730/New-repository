@@ -1,0 +1,27 @@
+{
+  "name": "project",
+  "version": "1.0.0",
+  "description": "学習タスク管理とサイトブロックを組み合わせたChrome拡張機能",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build:firebase": "esbuild src/firebase-entry.js --bundle --format=iife --platform=browser --outfile=dist/firebase-entry.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/soraki0730/New-repository.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/soraki0730/New-repository/issues"
+  },
+  "homepage": "https://github.com/soraki0730/New-repository#readme",
+  "dependencies": {
+    "firebase": "^12.15.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.1"
+  }
+}
