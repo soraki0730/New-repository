@@ -2,6 +2,7 @@ import {
   collection,
   doc,
   setDoc,
+  deleteDoc,
   serverTimestamp,
   onSnapshot,
   query,
@@ -27,6 +28,13 @@ export async function upsertTask(uid, task) {
   };
   await setDoc(taskRef, taskData, { merge: true });
   return taskData.id;
+}
+
+export async function deleteTask(uid, taskId) {
+  if (!taskId) return;
+  const taskRef = doc(db, 'users', uid, 'tasks', String(taskId));
+  await deleteDoc(taskRef);
+  return taskId;
 }
 
 export function subscribeTasks(uid, onTasks, onError) {

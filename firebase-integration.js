@@ -67,6 +67,40 @@
         console.error('[Firebase Integration] subscribe error', err);
       });
 
+      // Initial push: read local tasks and upsert to Firestore (do not bulk-delete remote)
+      try {
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+          chrome.storage.local.get(['tasks'], (res) => {
+            const localTasks = res?.tasks || [];
+            localTasks.forEach(t => {
+              if (!t || !t.id) {
+                console.warn('[Firebase Integration] skipping local task without id');
+                return;
+              }
+              // map storage fields to firestore expected fields minimally
+              const payload = {
+                id: String(t.id),
+                title: t.name || t.title || '',
+                completed: t.done ?? t.completed ?? false,
+                progress: t.progress ?? 0,
+                // keep original fields as metadata
+                name: t.name,
+                category: t.category,
+                date: t.date,
+                startTime: t.startTime,
+                endTime: t.endTime
+              };
+              window.studyFirebase.upsertTask(uid, payload).then(() => {
+                console.log(`[Firebase Integration] local task pushed: ${t.id}`);
+              }).catch(e => console.error('[Firebase Integration] push error', e));
+            });
+            console.log(`[Firebase Integration] local tasks pushed: ${localTasks.length} tasks`);
+          });
+        }
+      } catch (e) {
+        console.error('[Firebase Integration] initial push error', e);
+      }
+
       setStatus(`UID:${short} 接続済み`, 'success');
 
     } catch(err){
@@ -79,8 +113,93 @@
     setStatus('Firebase接続中…','connecting');
     startIntegration();
   });
+  // storage change listener
+  let storageListener = null;
+  function onStorageChange(changes, area) {
+    if (area !== 'local') return;
+    if (!changes.tasks) return; // ignore other keys (including firebaseTasks)
+    const { oldValue, newValue } = changes.tasks;
+    const before = Array.isArray(oldValue) ? oldValue : [];
+    const after = Array.isArray(newValue) ? newValue : [];
+
+    const beforeMap = new Map(before.map(t => [String(t.id), t]));
+    const afterMap = new Map(after.map(t => [String(t.id), t]));
+
+    // detect created and updated
+    after.forEach(t => {
+      if (!t || !t.id) {
+        console.warn('[Firebase Integration] skipping local task without id');
+        return;
+      }
+      const id = String(t.id);
+      const prev = beforeMap.get(id);
+      if (!prev) {
+        // created
+        window.studyFirebase.upsertTask(subscribedUid, {
+          id: id,
+          title: t.name || t.title || '',
+          completed: t.done ?? t.completed ?? false,
+          progress: t.progress ?? 0,
+          name: t.name,
+          category: t.category,
+          date: t.date,
+          startTime: t.startTime,
+          endTime: t.endTime
+        }).then(()=>{
+          console.log(`[Firebase Integration] local task created: ${id}`);
+        }).catch(e=>console.error('[Firebase Integration] upsert error', e));
+      } else {
+        // compare JSON
+        try{
+          const prevS = JSON.stringify(prev);
+          const nowS = JSON.stringify(t);
+          if (prevS !== nowS) {
+            window.studyFirebase.upsertTask(subscribedUid, {
+              id: id,
+              title: t.name || t.title || '',
+              completed: t.done ?? t.completed ?? false,
+              progress: t.progress ?? 0,
+              name: t.name,
+              category: t.category,
+              date: t.date,
+              startTime: t.startTime,
+              endTime: t.endTime
+            }).then(()=>{
+              console.log(`[Firebase Integration] local task updated: ${id}`);
+            }).catch(e=>console.error('[Firebase Integration] upsert error', e));
+          }
+        } catch(e){ console.error(e); }
+      }
+    });
+
+    // detect deleted
+    before.forEach(t => {
+      if (!t || !t.id) return;
+      const id = String(t.id);
+      if (!afterMap.has(id)) {
+        window.studyFirebase.deleteTask(subscribedUid, id).then(()=>{
+          console.log(`[Firebase Integration] local task deleted: ${id}`);
+        }).catch(e=>console.error('[Firebase Integration] delete error', e));
+      }
+    });
+
+    // final log
+    console.log(`[Firebase Integration] local tasks pushed: ${after.length} tasks`);
+  }
+
+  window.addEventListener('DOMContentLoaded', ()=>{
+    // register storage listener (only once)
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged && !storageListener) {
+      storageListener = onStorageChange;
+      chrome.storage.onChanged.addListener(storageListener);
+    }
+  });
 
   window.addEventListener('beforeunload', ()=>{
     if (typeof unsubscribe === 'function') try { unsubscribe(); } catch(e){}
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged && storageListener) {
+      try { chrome.storage.onChanged.removeListener(storageListener); } catch(e){}
+      storageListener = null;
+    }
   });
 })();

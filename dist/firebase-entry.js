@@ -27957,6 +27957,9 @@ This typically indicates that your device does not have a healthy Internet conne
     const r = __PRIVATE_cast(t.firestore, Firestore), s = __PRIVATE_applyFirestoreDataConverter(t.converter, e, n), o = __PRIVATE_newUserDataReader(r);
     return executeWrite(r, [__PRIVATE_parseSetData(o, "setDoc", t._key, s, null !== t.converter, n).toMutation(t._key, Precondition.none())]);
   }
+  function deleteDoc(t) {
+    return executeWrite(__PRIVATE_cast(t.firestore, Firestore), [new __PRIVATE_DeleteMutation(t._key, Precondition.none())]);
+  }
   function onSnapshot(t, ...e) {
     t = getModularInstance(t);
     let n = {
@@ -28066,6 +28069,12 @@ This typically indicates that your device does not have a healthy Internet conne
     await setDoc(taskRef, taskData, { merge: true });
     return taskData.id;
   }
+  async function deleteTask(uid, taskId) {
+    if (!taskId) return;
+    const taskRef = doc(db, "users", uid, "tasks", String(taskId));
+    await deleteDoc(taskRef);
+    return taskId;
+  }
   function subscribeTasks(uid, onTasks, onError) {
     const tasksCollection = collection(db, "users", uid, "tasks");
     const tasksQuery = query(tasksCollection, orderBy("createdAt"));
@@ -28116,6 +28125,7 @@ This typically indicates that your device does not have a healthy Internet conne
   window.studyFirebase = {
     ensureAnonymousUser,
     upsertTask,
+    deleteTask,
     subscribeTasks
   };
   console.log("[Firebase] Firebase bundle loaded");

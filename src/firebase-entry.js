@@ -1,5 +1,5 @@
 import { ensureAnonymousUser } from './authService.js';
-import { upsertTask, subscribeTasks } from './taskRepository.js';
+import { upsertTask, subscribeTasks, deleteTask } from './taskRepository.js';
 
 const uidEl = document.getElementById('uid');
 const statusEl = document.getElementById('status');
@@ -31,6 +31,7 @@ function renderTasks(tasks) {
 window.studyFirebase = {
   ensureAnonymousUser,
   upsertTask,
+  deleteTask,
   subscribeTasks
 };
 
