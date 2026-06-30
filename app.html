@@ -219,7 +219,7 @@
             <button class="modal-sheet__cancel" id="modal-cancel">
               キャンセル
             </button>
-            <h2 class="modal-sheet__title">タスク追加</h2>
+            <h2 class="modal-sheet__title" id="modal-title">タスク追加</h2>
             <div style="width: 70px"></div>
           </div>
 
@@ -307,9 +307,14 @@
               </div>
             </div>
           </div>
-          <button class="task__delete" type="button" aria-label="削除">
-            ×
-          </button>
+          <div class="task-card__actions">
+            <button class="task__edit" type="button" aria-label="編集">
+              ✎
+            </button>
+            <button class="task__delete" type="button" aria-label="削除">
+              ×
+            </button>
+          </div>
         </li>
       </template>
 

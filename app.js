@@ -9,6 +9,7 @@ let currentUid = null;
 let currentProfile = { displayName: '', groupId: '' };
 let groupUnsubscribe = null;
 let activeGroupId = '';
+let editingTaskId = null;
 
 // ====== 日付ユーティリティ ======
 
@@ -76,6 +77,19 @@ async function setProgress(id, percent) {
   task.updatedAt = Date.now();
   await saveTasks(tasks);
   await syncTodayProgressToFirebase();
+  return tasks;
+}
+
+async function updateTaskDetails(id, updates = {}) {
+  const task = tasks.find((x) => x.id === id);
+  if (!task) return tasks;
+  task.title = (updates.title || "").trim();
+  task.category = updates.category || "";
+  task.date = updates.date || getTodayDate();
+  task.startTime = updates.startTime || "";
+  task.endTime = updates.endTime || "";
+  task.updatedAt = Date.now();
+  await saveTasks(tasks);
   return tasks;
 }
 
@@ -413,6 +427,7 @@ function renderList() {
     const category = node.querySelector(".task__category");
     const range    = node.querySelector(".task__range");
     const pct      = node.querySelector(".task__pct");
+    const edit     = node.querySelector(".task__edit");
     const del      = node.querySelector(".task__delete");
 
     check.checked = task.done;
@@ -436,6 +451,10 @@ function renderList() {
     range.addEventListener("change", async () => {
       await setProgress(task.id, Number(range.value));
       renderAll();
+    });
+
+    edit.addEventListener("click", () => {
+      openModal(task.date, task);
     });
 
     del.addEventListener("click", () => {
@@ -569,8 +588,17 @@ function renderDayView() {
       }, 180);
     });
 
+    const editBtn = document.createElement('button');
+    editBtn.className = 'period-task-card__edit';
+    editBtn.textContent = '✎';
+    editBtn.setAttribute('aria-label', '編集');
+    editBtn.addEventListener('click', () => {
+      openModal(task.date, task);
+    });
+
     card.appendChild(checkBtn);
     card.appendChild(body);
+    card.appendChild(editBtn);
     card.appendChild(delBtn);
     list.appendChild(card);
   });
@@ -753,22 +781,48 @@ function getDefaultTimes() {
 
 // ====== モーダル ======
 
-function openModal(defaultDate) {
-  els.taskDate.value = defaultDate || getTodayDate();
-  const { start, end } = getDefaultTimes();
-  els.taskStartTime.value = start;
-  els.taskEndTime.value   = end;
+function setSelectedCategory(category) {
+  document.querySelectorAll(".category-chip").forEach((chip) => {
+    chip.classList.toggle("selected", chip.dataset.value === category);
+  });
+}
+
+function setModalMode(task) {
+  const isEditing = Boolean(task);
+  if (els.modalTitle) els.modalTitle.textContent = isEditing ? "タスク編集" : "タスク追加";
+  if (els.modalSubmit) els.modalSubmit.textContent = isEditing ? "変更を保存" : "タスクを追加";
+  els.modal.setAttribute("aria-label", isEditing ? "タスク編集" : "タスク追加");
+}
+
+function openModal(defaultDate, task = null) {
+  editingTaskId = task ? task.id : null;
+  setModalMode(task);
+  els.input.value = task ? task.title : "";
+  els.taskDate.value = task ? (task.date || getTodayDate()) : (defaultDate || getTodayDate());
+
+  if (task) {
+    els.taskStartTime.value = task.startTime || "";
+    els.taskEndTime.value = task.endTime || "";
+  } else {
+    const { start, end } = getDefaultTimes();
+    els.taskStartTime.value = start;
+    els.taskEndTime.value = end;
+  }
+
+  setSelectedCategory(task ? (task.category || "") : "");
   els.modal.classList.add("active");
   setTimeout(() => els.input.focus(), 50);
 }
 
 function closeModal() {
   els.modal.classList.remove("active");
+  editingTaskId = null;
+  setModalMode(null);
   els.input.value = "";
   els.taskDate.value = "";
   els.taskStartTime.value = "";
   els.taskEndTime.value = "";
-  document.querySelectorAll(".category-chip").forEach((c) => c.classList.remove("selected"));
+  setSelectedCategory("");
 }
 
 async function handleAdd() {
@@ -778,12 +832,17 @@ async function handleAdd() {
     return;
   }
   const selectedChip = document.querySelector(".category-chip.selected");
-  await addTask(title, {
+  const taskData = {
     category:  selectedChip ? selectedChip.dataset.value : "",
     date:      els.taskDate.value,
     startTime: els.taskStartTime.value,
     endTime:   els.taskEndTime.value,
-  });
+  };
+  if (editingTaskId) {
+    await updateTaskDetails(editingTaskId, { title, ...taskData });
+  } else {
+    await addTask(title, taskData);
+  }
   closeModal();
   renderAll();
 }
@@ -862,6 +921,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   els.bar               = document.getElementById("progress-bar");
   els.empty             = document.getElementById("empty-state");
   els.modal             = document.getElementById("add-modal");
+  els.modalTitle        = document.getElementById("modal-title");
+  els.modalSubmit       = document.getElementById("modal-submit");
   els.achievementPct    = document.getElementById("achievement-pct");
   els.achievementCircle = document.getElementById("achievement-circle");
   els.taskDate          = document.getElementById("task-date");

@@ -532,6 +532,14 @@ body {
   gap: 6px;
 }
 
+.task-card__actions {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.task__edit,
 .task__delete {
   flex: none;
   width: 30px;
@@ -546,6 +554,11 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.task__edit:hover {
+  background: var(--primary-light);
+  color: var(--primary-dark);
 }
 
 .task__delete:hover {
@@ -1044,6 +1057,7 @@ body {
   min-width: 0;
 }
 
+.period-task-card__edit,
 .period-task-card__delete {
   flex: none;
   width: 28px;
@@ -1058,6 +1072,11 @@ body {
   align-items: center;
   justify-content: center;
   transition: all 0.15s;
+}
+
+.period-task-card__edit:hover {
+  background: var(--primary-light);
+  color: var(--primary-dark);
 }
 
 .period-task-card__delete:hover {
