@@ -28135,6 +28135,16 @@ This typically indicates that your device does not have a healthy Internet conne
       onError
     );
   }
+  async function upsertSettings(uid, settings) {
+    const ref = doc(db, "users", uid, "settings", "main");
+    await setDoc(ref, { ...settings, updatedAt: serverTimestamp() }, { merge: true });
+  }
+  function subscribeSettings(uid, onSettings, onError) {
+    const ref = doc(db, "users", uid, "settings", "main");
+    return onSnapshot(ref, (snapshot) => {
+      if (snapshot.exists()) onSettings(snapshot.data());
+    }, onError);
+  }
 
   // src/firebase-entry.js
   var uidEl = document.getElementById("uid");
@@ -28164,7 +28174,9 @@ This typically indicates that your device does not have a healthy Internet conne
     ensureAnonymousUser,
     upsertTask,
     deleteTask,
-    subscribeTasks
+    subscribeTasks,
+    upsertSettings,
+    subscribeSettings
   };
   console.log("[Firebase] Firebase bundle loaded");
   async function init() {

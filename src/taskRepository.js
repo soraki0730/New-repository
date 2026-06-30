@@ -20,7 +20,6 @@ export async function upsertTask(uid, task) {
   const tasksCollection = collection(db, 'users', uid, 'tasks');
   const taskRef = task.id ? doc(tasksCollection, task.id) : doc(tasksCollection);
   const payload = localToFirestorePayload(task);
-  // ensure createdAt/updatedAt handling: if no createdAt provided, use serverTimestamp in payload
   if (!payload.createdAt) payload.createdAt = serverTimestamp();
   payload.updatedAt = serverTimestamp();
   await setDoc(taskRef, payload, { merge: true });
@@ -48,4 +47,16 @@ export function subscribeTasks(uid, onTasks, onError) {
     },
     onError
   );
+}
+
+export async function upsertSettings(uid, settings) {
+  const ref = doc(db, 'users', uid, 'settings', 'main');
+  await setDoc(ref, { ...settings, updatedAt: serverTimestamp() }, { merge: true });
+}
+
+export function subscribeSettings(uid, onSettings, onError) {
+  const ref = doc(db, 'users', uid, 'settings', 'main');
+  return onSnapshot(ref, snapshot => {
+    if (snapshot.exists()) onSettings(snapshot.data());
+  }, onError);
 }
