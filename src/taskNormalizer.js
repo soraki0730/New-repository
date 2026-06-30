@@ -24,6 +24,7 @@ export function normalizeFromFirestore(docId, data) {
   return {
     id: String(id),
     name,
+    title: name,
     category: data?.category ?? '未分類',
     date,
     startTime: data?.startTime ?? '',

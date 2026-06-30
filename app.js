@@ -5,6 +5,10 @@
 let tasks    = [];
 let tasksTab = 'day'; // 'day' | 'week' | 'month'
 let navDate  = new Date();
+let currentUid = null;
+let currentProfile = { displayName: '', groupId: '' };
+let groupUnsubscribe = null;
+let activeGroupId = '';
 
 // ====== 日付ユーティリティ ======
 
@@ -48,6 +52,7 @@ async function addTask(title, options = {}) {
   if (!t) return tasks;
   tasks.push(makeTask(t, options));
   await saveTasks(tasks);
+  await syncTodayProgressToFirebase();
   return tasks;
 }
 
@@ -58,6 +63,7 @@ async function toggleTask(id) {
   task.progress = task.done ? 100 : 0;
   task.updatedAt = Date.now();
   await saveTasks(tasks);
+  await syncTodayProgressToFirebase();
   return tasks;
 }
 
@@ -69,17 +75,266 @@ async function setProgress(id, percent) {
   task.done = p >= 100;
   task.updatedAt = Date.now();
   await saveTasks(tasks);
+  await syncTodayProgressToFirebase();
   return tasks;
 }
 
 async function deleteTask(id) {
   tasks = tasks.filter((x) => x.id !== id);
   await saveTasks(tasks);
+  await syncTodayProgressToFirebase();
   return tasks;
 }
 
 function getTasks() {
   return tasks;
+}
+
+function getTodayProgressData(taskList = tasks) {
+  const today = getTodayDate();
+  const todayTasks = (taskList || []).filter((t) => t.date === today);
+  const totalCount = todayTasks.length;
+  const completedCount = todayTasks.filter((t) => t.done).length;
+  const todayProgress = totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100);
+  return { todayProgress, completedCount, totalCount };
+}
+
+function formatRelativeTime(timestamp) {
+  if (!timestamp) return '未更新';
+  const value = typeof timestamp.toMillis === 'function' ? timestamp.toMillis() : timestamp;
+  if (!value) return '未更新';
+  const diffMs = Date.now() - value;
+  const diffMin = Math.max(1, Math.round(diffMs / 60000));
+  if (diffMin < 60) return `${diffMin}分前`;
+  const diffHour = Math.round(diffMin / 60);
+  if (diffHour < 24) return `${diffHour}時間前`;
+  const diffDay = Math.round(diffHour / 24);
+  return `${diffDay}日前`;
+}
+
+function readStoredProfileSettings() {
+  return new Promise((resolve) => {
+    const fallback = { displayName: '', groupId: '' };
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.get(['firebaseDisplayName', 'firebaseGroupId'], (result) => {
+        resolve({
+          displayName: result?.firebaseDisplayName || '',
+          groupId: result?.firebaseGroupId || ''
+        });
+      });
+      return;
+    }
+
+    try {
+      resolve({
+        displayName: localStorage.getItem('firebaseDisplayName') || '',
+        groupId: localStorage.getItem('firebaseGroupId') || ''
+      });
+    } catch (error) {
+      resolve(fallback);
+    }
+  });
+}
+
+function saveProfileSettings(displayName, groupId) {
+  const payload = {
+    firebaseDisplayName: displayName || '',
+    firebaseGroupId: groupId || ''
+  };
+
+  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+    chrome.storage.local.set(payload);
+    return;
+  }
+
+  try {
+    localStorage.setItem('firebaseDisplayName', payload.firebaseDisplayName);
+    localStorage.setItem('firebaseGroupId', payload.firebaseGroupId);
+  } catch (error) {
+    console.warn('[Group Share] local profile save failed', error);
+  }
+}
+
+function setProfileFormValues(profile = {}) {
+  const displayNameInput = document.getElementById('profile-display-name');
+  const groupIdInput = document.getElementById('profile-group-id');
+  if (displayNameInput) {
+    displayNameInput.value = profile.displayName || '';
+  }
+  if (groupIdInput) {
+    groupIdInput.value = profile.groupId || '';
+  }
+}
+
+function renderProfileSummary() {
+  const nameEl = document.getElementById('profile-current-name');
+  const groupEl = document.getElementById('profile-current-group');
+  if (nameEl) {
+    nameEl.textContent = currentProfile.displayName || '名前未設定';
+  }
+  if (groupEl) {
+    groupEl.textContent = currentProfile.groupId ? currentProfile.groupId : '未参加';
+  }
+}
+
+function renderGroupMembers(members = []) {
+  const list = document.getElementById('group-progress-list');
+  const empty = document.getElementById('group-progress-empty');
+  if (!list || !empty) return;
+
+  if (!currentProfile.groupId) {
+    empty.hidden = false;
+    list.innerHTML = '';
+    return;
+  }
+
+  empty.hidden = members.length > 0;
+  list.innerHTML = '';
+
+  if (members.length === 0) {
+    empty.textContent = '今日のタスクはありません';
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+  members.forEach((member) => {
+    const card = document.createElement('div');
+    card.className = 'group-member-card';
+
+    const top = document.createElement('div');
+    top.className = 'group-member-card__top';
+
+    const name = document.createElement('div');
+    name.className = 'group-member-card__name';
+    name.textContent = member.displayName || '名前未設定';
+
+    const badge = document.createElement('span');
+    badge.className = 'group-member-card__badge';
+    badge.textContent = member.uid === currentUid ? '自分' : '参加中';
+
+    top.appendChild(name);
+    top.appendChild(badge);
+
+    const meta = document.createElement('div');
+    meta.className = 'group-member-card__meta';
+    const total = member.totalCount || 0;
+    if (total === 0) {
+      meta.textContent = '今日のタスクはありません';
+    } else {
+      meta.textContent = `${member.todayProgress || 0}% · ${member.completedCount || 0} / ${total} タスク完了`;
+    }
+
+    const updated = document.createElement('div');
+    updated.className = 'group-member-card__meta';
+    updated.textContent = `最終更新 ${formatRelativeTime(member.updatedAt || member.lastActiveAt)}`;
+
+    card.appendChild(top);
+    card.appendChild(meta);
+    card.appendChild(updated);
+    fragment.appendChild(card);
+  });
+
+  list.appendChild(fragment);
+}
+
+async function ensureFirebaseAvailable() {
+  if (window.studyFirebase) return window.studyFirebase;
+  for (let i = 0; i < 10; i += 1) {
+    if (window.studyFirebase) return window.studyFirebase;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  return window.studyFirebase || null;
+}
+
+async function ensureCurrentUser() {
+  const firebaseApi = await ensureFirebaseAvailable();
+  if (!firebaseApi?.ensureAnonymousUser) return null;
+  if (currentUid) return currentUid;
+  const user = await firebaseApi.ensureAnonymousUser();
+  currentUid = user?.uid ? String(user.uid) : null;
+  return currentUid;
+}
+
+async function syncTodayProgressToFirebase() {
+  const firebaseApi = await ensureFirebaseAvailable();
+  if (!firebaseApi?.updateTodayProgress || !currentUid) return null;
+  const progressData = getTodayProgressData(tasks);
+  try {
+    await firebaseApi.updateTodayProgress(currentUid, progressData);
+    console.log(`[Group Share] progress updated: ${progressData.completedCount}/${progressData.totalCount} (${progressData.todayProgress}%)`);
+    return progressData;
+  } catch (error) {
+    console.error('[Group Share] progress update failed', error);
+    return null;
+  }
+}
+
+async function subscribeToGroup(groupId) {
+  if (groupUnsubscribe) {
+    groupUnsubscribe();
+    groupUnsubscribe = null;
+  }
+
+  activeGroupId = groupId || '';
+  if (!groupId) {
+    renderGroupMembers([]);
+    return;
+  }
+
+  const firebaseApi = await ensureFirebaseAvailable();
+  if (!firebaseApi?.subscribeGroupMembers) return;
+
+  groupUnsubscribe = firebaseApi.subscribeGroupMembers(
+    groupId,
+    (members) => {
+      renderGroupMembers(members);
+    },
+    (error) => {
+      console.error('[Group Share] group subscription error', error);
+      renderGroupMembers([]);
+    }
+  );
+}
+
+async function saveProfileAndJoinGroup() {
+  const firebaseApi = await ensureFirebaseAvailable();
+  if (!firebaseApi?.upsertUserProfile || !currentUid) {
+    return false;
+  }
+
+  const displayNameInput = document.getElementById('profile-display-name');
+  const groupIdInput = document.getElementById('profile-group-id');
+  const displayName = (displayNameInput?.value || '').trim() || '名前未設定';
+  const groupId = (groupIdInput?.value || '').trim();
+
+  currentProfile = { displayName, groupId };
+  saveProfileSettings(displayName, groupId);
+  renderProfileSummary();
+
+  await firebaseApi.upsertUserProfile(currentUid, { displayName, groupId });
+  await syncTodayProgressToFirebase();
+  await subscribeToGroup(groupId);
+  return true;
+}
+
+async function initializeGroupSharing() {
+  const savedProfile = await readStoredProfileSettings();
+  currentProfile = {
+    displayName: savedProfile.displayName || '名前未設定',
+    groupId: savedProfile.groupId || ''
+  };
+  setProfileFormValues(currentProfile);
+  renderProfileSummary();
+
+  const uid = await ensureCurrentUser();
+  if (!uid) {
+    console.warn('[Group Share] Firebase user not available');
+    return;
+  }
+
+  currentUid = uid;
+  await saveProfileAndJoinGroup();
+  await syncTodayProgressToFirebase();
 }
 
 // ====== 描画 ======
@@ -703,4 +958,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   tasks = await loadTasks();
   renderAll();
   renderBlockUrls();
+
+  // プロフィール・グループ共有
+  document.getElementById('profile-save-btn').addEventListener('click', async () => {
+    await saveProfileAndJoinGroup();
+  });
+
+  await initializeGroupSharing();
+  await syncTodayProgressToFirebase();
 });
