@@ -683,6 +683,22 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (e.key === "Enter") handleAddBlockUrl();
   });
 
+  // 設定：スタディモード
+  const studyToggle = document.getElementById("study-mode-toggle");
+  const studyOn = await loadStudyMode();
+  studyToggle.checked = studyOn;
+  studyToggle.addEventListener("change", async () => {
+    await saveStudyMode(studyToggle.checked);
+  });
+
+  // chrome.storage の変化を監視してトグルを最新状態に保つ
+  if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.onChanged) {
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== "local" || !changes.studyMode) return;
+      studyToggle.checked = changes.studyMode.newValue ?? false;
+    });
+  }
+
   // 初期描画
   tasks = await loadTasks();
   renderAll();
