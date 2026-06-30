@@ -1,5 +1,7 @@
 import { ensureAnonymousUser } from './authService.js';
 import { upsertTask, subscribeTasks, deleteTask } from './taskRepository.js';
+import { upsertUserProfile, updateTodayProgress } from './profileRepository.js';
+import { subscribeGroupMembers } from './groupRepository.js';
 
 const uidEl = document.getElementById('uid');
 const statusEl = document.getElementById('status');
@@ -32,7 +34,10 @@ window.studyFirebase = {
   ensureAnonymousUser,
   upsertTask,
   deleteTask,
-  subscribeTasks
+  subscribeTasks,
+  upsertUserProfile,
+  updateTodayProgress,
+  subscribeGroupMembers
 };
 
 console.log('[Firebase] Firebase bundle loaded');

@@ -155,14 +155,17 @@
             }
             const id = String(ft.id);
             const local = localMap.get(id);
+            const cloudTitle = ft.title || ft.name || '';
+            const cloudName = ft.name || ft.title || '';
             if (!local) {
               merged.push({
                 id,
-                name: ft.name || '',
-                category: ft.category,
-                date: ft.date,
-                startTime: ft.startTime,
-                endTime: ft.endTime,
+                title: cloudTitle,
+                name: cloudName,
+                category: ft.category ?? '未分類',
+                date: ft.date ?? '',
+                startTime: ft.startTime ?? '',
+                endTime: ft.endTime ?? '',
                 done: ft.done ?? false,
                 progress: ft.progress ?? 0,
                 updatedAt: ft.updatedAt,
@@ -178,11 +181,12 @@
                 if (index !== -1) {
                   merged[index] = {
                     ...local,
-                    name: ft.name || local.name || '',
-                    category: local.category ?? ft.category,
-                    date: local.date ?? ft.date,
-                    startTime: local.startTime ?? ft.startTime,
-                    endTime: local.endTime ?? ft.endTime,
+                    title: cloudTitle || local.title || local.name || '',
+                    name: cloudName || local.name || local.title || '',
+                    category: local.category ?? ft.category ?? '未分類',
+                    date: local.date ?? ft.date ?? '',
+                    startTime: local.startTime ?? ft.startTime ?? '',
+                    endTime: local.endTime ?? ft.endTime ?? '',
                     done: ft.done ?? local.done ?? false,
                     progress: ft.progress ?? local.progress ?? 0,
                     updatedAt: ft.updatedAt,
@@ -211,6 +215,7 @@
           await storageSet();
           setStatus(`クラウドから${restoredCount}件復元しました`, 'success');
           console.log(`[Firebase Integration] restored: ${restoredCount} tasks`);
+          window.location.reload();
         } catch (err) {
           setStatus('Firebase同期エラー', 'error');
           console.error('[Firebase Integration] restore error', err);

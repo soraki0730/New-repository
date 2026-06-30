@@ -266,6 +266,103 @@ body {
   margin-bottom: 12px;
 }
 
+.profile-card,
+.group-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 14px;
+  box-shadow: var(--shadow);
+}
+
+.profile-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.profile-field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.profile-field input {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font: inherit;
+  color: var(--ink);
+  background: #fafafa;
+}
+
+.profile-save-btn {
+  width: 100%;
+  border: none;
+  border-radius: 999px;
+  padding: 10px 12px;
+  margin-top: 4px;
+  background: var(--primary);
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.profile-summary {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.group-progress-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.group-progress-empty {
+  color: var(--ink-soft);
+  font-size: 13px;
+  padding: 8px 2px 0;
+}
+
+.group-member-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  box-shadow: var(--shadow);
+}
+
+.group-member-card__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.group-member-card__name {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.group-member-card__badge {
+  font-size: 11px;
+  color: var(--primary-dark);
+  background: var(--primary-light);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.group-member-card__meta {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-top: 2px;
+}
+
 /* ===== TASK LIST ===== */
 .task-list {
   list-style: none;

@@ -65,6 +65,33 @@
           </div>
         </div>
 
+        <div class="section profile-section">
+          <h3 class="section__head">プロフィール</h3>
+          <div class="profile-card">
+            <div class="profile-field">
+              <label for="profile-display-name">表示名</label>
+              <input id="profile-display-name" type="text" placeholder="例）佐藤" autocomplete="off" />
+            </div>
+            <div class="profile-field">
+              <label for="profile-group-id">グループID</label>
+              <input id="profile-group-id" type="text" placeholder="例）study-2024" autocomplete="off" />
+            </div>
+            <button class="profile-save-btn" id="profile-save-btn" type="button">保存する</button>
+            <div class="profile-summary">
+              <p>現在の表示名: <span id="profile-current-name">-</span></p>
+              <p>参加中のグループ: <span id="profile-current-group">未参加</span></p>
+            </div>
+          </div>
+        </div>
+
+        <div class="section group-section">
+          <h3 class="section__head">みんなの進捗</h3>
+          <div id="group-progress-empty" class="group-progress-empty">
+            表示名とグループIDを設定してください
+          </div>
+          <div id="group-progress-list" class="group-progress-list"></div>
+        </div>
+
         <div class="section">
           <h3 class="section__head">
             今日のタスク

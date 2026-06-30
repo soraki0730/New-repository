@@ -27619,6 +27619,10 @@ This typically indicates that your device does not have a healthy Internet conne
       return n;
     }
   };
+  function where(t, e, n) {
+    const r = e, s = __PRIVATE_fieldPathFromArgument("where", t);
+    return QueryFieldFilterConstraint._create(s, r, n);
+  }
   var QueryCompositeFilterConstraint = class _QueryCompositeFilterConstraint extends AppliableConstraint {
     /**
      * @internal
@@ -28074,6 +28078,7 @@ This typically indicates that your device does not have a healthy Internet conne
     return {
       id: String(id),
       name: name4,
+      title: name4,
       category: data?.category ?? "\u672A\u5206\u985E",
       date,
       startTime: data?.startTime ?? "",
@@ -28136,6 +28141,93 @@ This typically indicates that your device does not have a healthy Internet conne
     );
   }
 
+  // src/profileRepository.js
+  async function upsertUserProfile(uid, profile) {
+    if (!uid) return null;
+    const profileRef = doc(db, "users", uid);
+    const payload = {};
+    if (profile && typeof profile === "object") {
+      const displayName = typeof profile.displayName === "string" ? profile.displayName.trim() : "";
+      if (displayName) {
+        payload.displayName = displayName;
+      } else if (profile.displayName === void 0) {
+        payload.displayName = "\u540D\u524D\u672A\u8A2D\u5B9A";
+      } else {
+        payload.displayName = "\u540D\u524D\u672A\u8A2D\u5B9A";
+      }
+      const groupId = typeof profile.groupId === "string" ? profile.groupId.trim() : "";
+      if (groupId) {
+        payload.groupId = groupId;
+      }
+      if (typeof profile.todayProgress === "number") {
+        payload.todayProgress = profile.todayProgress;
+      }
+      if (typeof profile.completedCount === "number") {
+        payload.completedCount = profile.completedCount;
+      }
+      if (typeof profile.totalCount === "number") {
+        payload.totalCount = profile.totalCount;
+      }
+    }
+    payload.lastActiveAt = serverTimestamp();
+    payload.updatedAt = serverTimestamp();
+    await setDoc(profileRef, payload, { merge: true });
+    return { uid };
+  }
+  async function updateTodayProgress(uid, progressData) {
+    if (!uid) return null;
+    const profileRef = doc(db, "users", uid);
+    const payload = {
+      todayProgress: typeof progressData?.todayProgress === "number" ? progressData.todayProgress : 0,
+      completedCount: typeof progressData?.completedCount === "number" ? progressData.completedCount : 0,
+      totalCount: typeof progressData?.totalCount === "number" ? progressData.totalCount : 0,
+      lastActiveAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+    await setDoc(profileRef, payload, { merge: true });
+    return { uid, ...payload };
+  }
+
+  // src/groupRepository.js
+  function subscribeGroupMembers(groupId, onMembers, onError) {
+    if (!groupId) {
+      onMembers([]);
+      return () => {
+      };
+    }
+    const usersCollection = collection(db, "users");
+    const q = query(
+      usersCollection,
+      where("groupId", "==", groupId),
+      orderBy("updatedAt", "desc")
+    );
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        const members = snapshot.docs.map((docSnapshot) => {
+          const data = docSnapshot.data();
+          const todayProgress = typeof data?.todayProgress === "number" ? data.todayProgress : 0;
+          const completedCount = typeof data?.completedCount === "number" ? data.completedCount : 0;
+          const totalCount = typeof data?.totalCount === "number" ? data.totalCount : 0;
+          const rawUpdatedAt = data?.updatedAt;
+          const lastActiveAt = data?.lastActiveAt;
+          return {
+            uid: docSnapshot.id,
+            displayName: data?.displayName || "\u540D\u524D\u672A\u8A2D\u5B9A",
+            groupId: data?.groupId || "",
+            todayProgress,
+            completedCount,
+            totalCount,
+            lastActiveAt: rawUpdatedAt || lastActiveAt || null,
+            updatedAt: rawUpdatedAt || null
+          };
+        });
+        onMembers(members);
+      },
+      onError
+    );
+  }
+
   // src/firebase-entry.js
   var uidEl = document.getElementById("uid");
   var statusEl = document.getElementById("status");
@@ -28164,7 +28256,10 @@ This typically indicates that your device does not have a healthy Internet conne
     ensureAnonymousUser,
     upsertTask,
     deleteTask,
-    subscribeTasks
+    subscribeTasks,
+    upsertUserProfile,
+    updateTodayProgress,
+    subscribeGroupMembers
   };
   console.log("[Firebase] Firebase bundle loaded");
   async function init() {
