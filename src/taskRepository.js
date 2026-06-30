@@ -9,6 +9,7 @@ import {
   orderBy
 } from 'firebase/firestore';
 import { db } from './firebaseClient.js';
+import { normalizeFromFirestore, localToFirestorePayload } from './taskNormalizer.js';
 
 function toMillis(value) {
   if (!value) return null;
@@ -18,16 +19,12 @@ function toMillis(value) {
 export async function upsertTask(uid, task) {
   const tasksCollection = collection(db, 'users', uid, 'tasks');
   const taskRef = task.id ? doc(tasksCollection, task.id) : doc(tasksCollection);
-  const taskData = {
-    id: task.id || taskRef.id,
-    title: task.title || '',
-    completed: task.completed ?? false,
-    progress: task.progress ?? 0,
-    createdAt: task.createdAt || serverTimestamp(),
-    updatedAt: serverTimestamp()
-  };
-  await setDoc(taskRef, taskData, { merge: true });
-  return taskData.id;
+  const payload = localToFirestorePayload(task);
+  // ensure createdAt/updatedAt handling: if no createdAt provided, use serverTimestamp in payload
+  if (!payload.createdAt) payload.createdAt = serverTimestamp();
+  payload.updatedAt = serverTimestamp();
+  await setDoc(taskRef, payload, { merge: true });
+  return String(task.id || taskRef.id);
 }
 
 export async function deleteTask(uid, taskId) {
@@ -45,14 +42,7 @@ export function subscribeTasks(uid, onTasks, onError) {
     snapshot => {
       const tasks = snapshot.docs.map(docSnapshot => {
         const data = docSnapshot.data();
-        return {
-          id: data.id || docSnapshot.id,
-          title: data.title,
-          completed: data.completed,
-          progress: data.progress,
-          createdAt: toMillis(data.createdAt),
-          updatedAt: toMillis(data.updatedAt)
-        };
+        return normalizeFromFirestore(docSnapshot.id, data);
       });
       onTasks(tasks);
     },

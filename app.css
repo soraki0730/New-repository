@@ -63,6 +63,42 @@ body {
   color: #2e7d32;
 }
 
+.firebase-backup-card {
+  position: absolute;
+  top: 44px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 14px;
+  box-shadow: 0 1px 10px rgba(0, 0, 0, 0.08);
+  z-index: 115;
+}
+
+#firebase-backup-count {
+  font-size: 12px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+#firebase-restore-button {
+  border: none;
+  background: var(--primary);
+  color: white;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+#firebase-restore-button:hover {
+  background: var(--primary-dark);
+}
+
+
 #firebase-sync-status.error {
   background: linear-gradient(90deg, #ffebee, #ffdde0);
   color: #c62828;

@@ -28050,24 +28050,69 @@ This typically indicates that your device does not have a healthy Internet conne
     return result.user;
   }
 
-  // src/taskRepository.js
-  function toMillis(value) {
-    if (!value) return null;
-    return typeof value.toMillis === "function" ? value.toMillis() : value;
+  // src/taskNormalizer.js
+  function normalizeFromFirestore(docId, data) {
+    const id = data?.id || docId;
+    const toMs = (v2) => {
+      if (v2 == null) return null;
+      if (typeof v2.toMillis === "function") return v2.toMillis();
+      if (typeof v2 === "number") return v2;
+      if (v2 instanceof Date) return v2.getTime();
+      return null;
+    };
+    const createdAtMs = toMs(data?.createdAt);
+    const updatedAtMs = toMs(data?.updatedAt);
+    const completedAtMs = toMs(data?.completedAt);
+    const name4 = data?.name ?? data?.title ?? "\u540D\u79F0\u672A\u8A2D\u5B9A";
+    let date = data?.date ?? null;
+    if (!date) {
+      const ms = createdAtMs ?? Date.now();
+      date = new Date(ms).toISOString().split("T")[0];
+    }
+    const done = typeof data?.done === "boolean" ? data.done : typeof data?.completed === "boolean" ? data.completed : false;
+    const progress = typeof data?.progress === "number" ? data.progress : done ? 100 : 0;
+    return {
+      id: String(id),
+      name: name4,
+      category: data?.category ?? "\u672A\u5206\u985E",
+      date,
+      startTime: data?.startTime ?? "",
+      endTime: data?.endTime ?? "",
+      done,
+      progress,
+      createdAt: createdAtMs,
+      updatedAt: updatedAtMs,
+      completedAt: completedAtMs
+    };
   }
+  function localToFirestorePayload(local) {
+    const payload = {
+      id: local.id,
+      name: local.name ?? local.title ?? "\u540D\u79F0\u672A\u8A2D\u5B9A",
+      title: local.name ?? local.title ?? "\u540D\u79F0\u672A\u8A2D\u5B9A",
+      category: local.category ?? "\u672A\u5206\u985E",
+      date: local.date ?? null,
+      startTime: local.startTime ?? "",
+      endTime: local.endTime ?? "",
+      done: local.done ?? local.completed ?? false,
+      completed: local.done ?? local.completed ?? false,
+      progress: typeof local.progress === "number" ? local.progress : local.done ?? false ? 100 : 0
+    };
+    if (typeof local.createdAt === "number") payload.createdAt = new Date(local.createdAt);
+    if (typeof local.updatedAt === "number") payload.updatedAt = new Date(local.updatedAt);
+    if (typeof local.completedAt === "number") payload.completedAt = new Date(local.completedAt);
+    return payload;
+  }
+
+  // src/taskRepository.js
   async function upsertTask(uid, task) {
     const tasksCollection = collection(db, "users", uid, "tasks");
     const taskRef = task.id ? doc(tasksCollection, task.id) : doc(tasksCollection);
-    const taskData = {
-      id: task.id || taskRef.id,
-      title: task.title || "",
-      completed: task.completed ?? false,
-      progress: task.progress ?? 0,
-      createdAt: task.createdAt || serverTimestamp(),
-      updatedAt: serverTimestamp()
-    };
-    await setDoc(taskRef, taskData, { merge: true });
-    return taskData.id;
+    const payload = localToFirestorePayload(task);
+    if (!payload.createdAt) payload.createdAt = serverTimestamp();
+    payload.updatedAt = serverTimestamp();
+    await setDoc(taskRef, payload, { merge: true });
+    return String(task.id || taskRef.id);
   }
   async function deleteTask(uid, taskId) {
     if (!taskId) return;
@@ -28083,14 +28128,7 @@ This typically indicates that your device does not have a healthy Internet conne
       (snapshot) => {
         const tasks = snapshot.docs.map((docSnapshot) => {
           const data = docSnapshot.data();
-          return {
-            id: data.id || docSnapshot.id,
-            title: data.title,
-            completed: data.completed,
-            progress: data.progress,
-            createdAt: toMillis(data.createdAt),
-            updatedAt: toMillis(data.updatedAt)
-          };
+          return normalizeFromFirestore(docSnapshot.id, data);
         });
         onTasks(tasks);
       },

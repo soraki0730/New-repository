@@ -18,16 +18,27 @@
     return d.toLocaleTimeString();
   }
 
+  const backupCountEl = $('firebase-backup-count');
+  const restoreButton = $('firebase-restore-button');
+  let isRestoring = false;
+
   function saveToStorage(tasks, uid){
     const payload = {
       firebaseTasks: tasks,
       firebaseSyncedAt: Date.now(),
       firebaseUid: uid
     };
+    if (typeof backupCountEl !== 'undefined' && backupCountEl) {
+      backupCountEl.textContent = `クラウド保存：${tasks.length}件`;
+    }
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
       chrome.storage.local.set(payload);
     } else {
-      try { localStorage.setItem('firebaseTasks', JSON.stringify(tasks)); localStorage.setItem('firebaseSyncedAt', String(Date.now())); localStorage.setItem('firebaseUid', uid); } catch(e){}
+      try {
+        localStorage.setItem('firebaseTasks', JSON.stringify(tasks));
+        localStorage.setItem('firebaseSyncedAt', String(Date.now()));
+        localStorage.setItem('firebaseUid', uid);
+      } catch(e){}
     }
   }
 
@@ -112,6 +123,103 @@
   window.addEventListener('DOMContentLoaded', ()=>{
     setStatus('Firebase接続中…','connecting');
     startIntegration();
+    if (restoreButton) {
+      restoreButton.addEventListener('click', async () => {
+        if (!window.confirm('クラウドのタスクをローカルに復元しますか？\n現在のローカルタスクは上書きされません。')) {
+          return;
+        }
+        if (isRestoring) return;
+        isRestoring = true;
+        restoreButton.disabled = true;
+        setStatus('Firebase同期中…', 'connecting');
+        try {
+          const storageGet = () => new Promise((resolve) => {
+            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+              chrome.storage.local.get(['tasks', 'firebaseTasks'], (res) => {
+                resolve({ tasks: res?.tasks || [], firebaseTasks: res?.firebaseTasks || [] });
+              });
+            } else {
+              const tasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+              const firebaseTasks = JSON.parse(localStorage.getItem('firebaseTasks') || '[]');
+              resolve({ tasks, firebaseTasks });
+            }
+          });
+          const { tasks: localTasks, firebaseTasks } = await storageGet();
+          const localMap = new Map(localTasks.filter(t => t && t.id).map(t => [String(t.id), t]));
+          const merged = [...localTasks];
+          let restoredCount = 0;
+          firebaseTasks.forEach(ft => {
+            if (!ft || !ft.id) {
+              console.warn('[Firebase Integration] skipping cloud task without id');
+              return;
+            }
+            const id = String(ft.id);
+            const local = localMap.get(id);
+            if (!local) {
+              merged.push({
+                id,
+                name: ft.name || '',
+                category: ft.category,
+                date: ft.date,
+                startTime: ft.startTime,
+                endTime: ft.endTime,
+                done: ft.done ?? false,
+                progress: ft.progress ?? 0,
+                updatedAt: ft.updatedAt,
+                createdAt: ft.createdAt,
+                completedAt: ft.completedAt
+              });
+              restoredCount += 1;
+            } else {
+              const localUpdated = typeof local.updatedAt === 'number' ? local.updatedAt : null;
+              const cloudUpdated = typeof ft.updatedAt === 'number' ? ft.updatedAt : null;
+              if (cloudUpdated !== null && localUpdated !== null && cloudUpdated > localUpdated) {
+                const index = merged.findIndex(t => String(t.id) === id);
+                if (index !== -1) {
+                  merged[index] = {
+                    ...local,
+                    name: ft.name || local.name || '',
+                    category: local.category ?? ft.category,
+                    date: local.date ?? ft.date,
+                    startTime: local.startTime ?? ft.startTime,
+                    endTime: local.endTime ?? ft.endTime,
+                    done: ft.done ?? local.done ?? false,
+                    progress: ft.progress ?? local.progress ?? 0,
+                    updatedAt: ft.updatedAt,
+                    createdAt: ft.createdAt ?? local.createdAt,
+                    completedAt: ft.completedAt
+                  };
+                  restoredCount += 1;
+                }
+              }
+            }
+          });
+          const storageSet = () => new Promise((resolve, reject) => {
+            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+              chrome.storage.local.set({ tasks: merged }, () => {
+                resolve();
+              });
+            } else {
+              try {
+                localStorage.setItem('tasks', JSON.stringify(merged));
+                resolve();
+              } catch (e) {
+                reject(e);
+              }
+            }
+          });
+          await storageSet();
+          setStatus(`クラウドから${restoredCount}件復元しました`, 'success');
+          console.log(`[Firebase Integration] restored: ${restoredCount} tasks`);
+        } catch (err) {
+          setStatus('Firebase同期エラー', 'error');
+          console.error('[Firebase Integration] restore error', err);
+        } finally {
+          isRestoring = false;
+          if (restoreButton) restoreButton.disabled = false;
+        }
+      });
+    }
   });
   // storage change listener
   let storageListener = null;
