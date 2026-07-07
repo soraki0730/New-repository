@@ -293,7 +293,10 @@
             <span class="task__time"></span>
             <span class="task__title"></span>
             <div class="task-card__footer">
-              <span class="task__category"></span>
+              <div class="task-card__footer-top">
+                <span class="task__category"></span>
+                <button class="task__study-toggle" type="button">勉強中</button>
+              </div>
               <div class="task-card__progress">
                 <input
                   class="task__range"
@@ -307,6 +310,9 @@
               </div>
             </div>
           </div>
+          <button class="task__edit" type="button" aria-label="編集">
+            ✎
+          </button>
           <button class="task__delete" type="button" aria-label="削除">
             ×
           </button>

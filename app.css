@@ -510,6 +510,12 @@ body {
   display: none;
 }
 
+.task__updated {
+  font-size: 11px;
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+
 /* カテゴリチップ（タスクカード内） */
 .task__category {
   display: inline-block;
@@ -532,6 +538,30 @@ body {
   gap: 6px;
 }
 
+.task-card__footer-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.task__study-toggle {
+  border: none;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--primary-dark);
+  background: var(--primary-light);
+  cursor: pointer;
+}
+
+.task__study-toggle.is-active {
+  background: var(--primary);
+  color: white;
+}
+
+.task__edit,
 .task__delete {
   flex: none;
   width: 30px;
@@ -540,12 +570,17 @@ body {
   border-radius: 8px;
   background: transparent;
   color: var(--ink-soft);
-  font-size: 18px;
+  font-size: 16px;
   cursor: pointer;
   transition: all 0.15s;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.task__edit:hover {
+  background: var(--primary-light);
+  color: var(--primary-dark);
 }
 
 .task__delete:hover {
@@ -1044,6 +1079,7 @@ body {
   min-width: 0;
 }
 
+.period-task-card__edit,
 .period-task-card__delete {
   flex: none;
   width: 28px;
@@ -1052,12 +1088,17 @@ body {
   border-radius: 8px;
   background: transparent;
   color: var(--ink-soft);
-  font-size: 18px;
+  font-size: 14px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.15s;
+}
+
+.period-task-card__edit:hover {
+  background: var(--primary-light);
+  color: var(--primary-dark);
 }
 
 .period-task-card__delete:hover {
@@ -1071,10 +1112,34 @@ body {
   color: var(--ink);
 }
 
+.period-task-card__study {
+  margin-top: 4px;
+  border: none;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--primary-dark);
+  background: var(--primary-light);
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.period-task-card__study.is-active {
+  background: var(--primary);
+  color: white;
+}
+
 .period-task-card__meta {
   font-size: 12px;
   color: var(--ink-soft);
   margin-top: 4px;
+}
+
+.period-task-card__updated {
+  font-size: 11px;
+  color: var(--ink-soft);
+  margin-top: 3px;
 }
 
 /* 今週：7日間カレンダー */

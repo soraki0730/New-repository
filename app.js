@@ -9,6 +9,7 @@ let currentUid = null;
 let currentProfile = { displayName: '', groupId: '' };
 let groupUnsubscribe = null;
 let activeGroupId = '';
+let editingTaskId = null;
 
 // ====== 日付ユーティリティ ======
 
@@ -40,6 +41,7 @@ function makeTask(title, { category = "", date = "", startTime = "", endTime = "
     endTime,
     done: false,
     progress: 0,
+    studying: false,
     createdAt: now,
     updatedAt: now,
   };
@@ -86,8 +88,27 @@ async function deleteTask(id) {
   return tasks;
 }
 
+async function toggleTaskStudying(id) {
+  const task = tasks.find((x) => x.id === id);
+  if (!task) return tasks;
+
+  const nextStudying = !task.studying;
+  tasks.forEach((item) => {
+    if (item.id !== id) item.studying = false;
+  });
+  task.studying = nextStudying;
+  task.updatedAt = Date.now();
+  await saveTasks(tasks);
+  await syncTodayProgressToFirebase();
+  return tasks;
+}
+
 function getTasks() {
   return tasks;
+}
+
+function getStudyingTask(taskList = tasks) {
+  return (taskList || []).find((task) => task.studying) || null;
 }
 
 function getTodayProgressData(taskList = tasks) {
@@ -411,14 +432,33 @@ function renderList() {
     const timeEl   = node.querySelector(".task__time");
     const title    = node.querySelector(".task__title");
     const category = node.querySelector(".task__category");
+    const studyBtn = node.querySelector(".task__study-toggle");
     const range    = node.querySelector(".task__range");
     const pct      = node.querySelector(".task__pct");
+    const edit     = node.querySelector(".task__edit");
     const del      = node.querySelector(".task__delete");
 
     check.checked = task.done;
     timeEl.textContent   = formatTimeRange(task.startTime, task.endTime);
     title.textContent    = task.title;
     category.textContent = task.category || "";
+    if (studyBtn) {
+      studyBtn.textContent = task.studying ? "勉強中 ✓" : "勉強中";
+      studyBtn.classList.toggle("is-active", Boolean(task.studying));
+      studyBtn.addEventListener("click", async () => {
+        await toggleTaskStudying(task.id);
+        renderAll();
+      });
+    }
+
+    let updatedEl = node.querySelector(".task__updated");
+    if (!updatedEl) {
+      updatedEl = document.createElement("span");
+      updatedEl.className = "task__updated";
+      node.querySelector(".task-card__body").insertBefore(updatedEl, node.querySelector(".task-card__footer"));
+    }
+    updatedEl.textContent = `更新 ${formatRelativeTime(task.updatedAt)}`;
+
     range.value = task.progress;
     range.style.setProperty("--fill", `${task.progress}%`);
     pct.textContent = `${task.progress}%`;
@@ -436,6 +476,10 @@ function renderList() {
     range.addEventListener("change", async () => {
       await setProgress(task.id, Number(range.value));
       renderAll();
+    });
+
+    edit.addEventListener("click", () => {
+      openModal(task.date || getTodayDate(), task);
     });
 
     del.addEventListener("click", () => {
@@ -456,6 +500,13 @@ function renderAll() {
   if (document.getElementById('view-tasks').classList.contains('active')) {
     renderTasksContent();
   }
+}
+
+async function syncStudyModeUi() {
+  const toggle = document.getElementById('study-mode-toggle');
+  if (!toggle) return;
+  const enabled = await loadStudyMode();
+  toggle.checked = Boolean(enabled);
 }
 
 // ====== マイページ（日/週/月）======
@@ -546,6 +597,21 @@ function renderDayView() {
     titleEl.textContent = task.title;
     body.appendChild(titleEl);
 
+    const updatedEl = document.createElement('div');
+    updatedEl.className = 'period-task-card__updated';
+    updatedEl.textContent = `更新 ${formatRelativeTime(task.updatedAt)}`;
+    body.appendChild(updatedEl);
+
+    const studyBtn = document.createElement('button');
+    studyBtn.className = `period-task-card__study${task.studying ? ' is-active' : ''}`;
+    studyBtn.type = 'button';
+    studyBtn.textContent = task.studying ? '勉強中 ✓' : '勉強中';
+    studyBtn.addEventListener('click', async () => {
+      await toggleTaskStudying(task.id);
+      renderAll();
+    });
+    body.appendChild(studyBtn);
+
     const meta = [task.category, formatTimeRange(task.startTime, task.endTime)]
       .filter(Boolean).join(' · ');
     if (meta) {
@@ -554,6 +620,15 @@ function renderDayView() {
       metaEl.textContent = meta;
       body.appendChild(metaEl);
     }
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'period-task-card__edit';
+    editBtn.textContent = '✎';
+    editBtn.setAttribute('aria-label', '編集');
+    editBtn.addEventListener('click', () => {
+      openModal(task.date || getTodayDate(), task);
+    });
+    card.appendChild(editBtn);
 
     const delBtn = document.createElement('button');
     delBtn.className = 'period-task-card__delete';
@@ -753,37 +828,80 @@ function getDefaultTimes() {
 
 // ====== モーダル ======
 
-function openModal(defaultDate) {
-  els.taskDate.value = defaultDate || getTodayDate();
-  const { start, end } = getDefaultTimes();
-  els.taskStartTime.value = start;
-  els.taskEndTime.value   = end;
+function openModal(defaultDate, task = null) {
+  editingTaskId = task?.id || null;
+  els.input.value = task?.title || "";
+  els.taskDate.value = task?.date || defaultDate || getTodayDate();
+  els.taskStartTime.value = task?.startTime || "";
+  els.taskEndTime.value = task?.endTime || "";
+
+  document.querySelectorAll(".category-chip").forEach((chip) => {
+    chip.classList.toggle("selected", chip.dataset.value === (task?.category || ""));
+  });
+
+  if (els.modalSubmit) {
+    els.modalSubmit.textContent = task ? "変更を保存" : "タスクを追加";
+  }
+
+  const titleEl = document.querySelector(".modal-sheet__title");
+  if (titleEl) {
+    titleEl.textContent = task ? "タスクを編集" : "タスク追加";
+  }
+
   els.modal.classList.add("active");
   setTimeout(() => els.input.focus(), 50);
 }
 
 function closeModal() {
+  editingTaskId = null;
   els.modal.classList.remove("active");
   els.input.value = "";
   els.taskDate.value = "";
   els.taskStartTime.value = "";
   els.taskEndTime.value = "";
   document.querySelectorAll(".category-chip").forEach((c) => c.classList.remove("selected"));
+
+  if (els.modalSubmit) {
+    els.modalSubmit.textContent = "タスクを追加";
+  }
+
+  const titleEl = document.querySelector(".modal-sheet__title");
+  if (titleEl) {
+    titleEl.textContent = "タスク追加";
+  }
 }
 
-async function handleAdd() {
-  const title = els.input.value;
-  if (!title.trim()) {
+async function handleSubmit() {
+  const title = els.input.value.trim();
+  if (!title) {
     els.input.focus();
     return;
   }
+
   const selectedChip = document.querySelector(".category-chip.selected");
-  await addTask(title, {
-    category:  selectedChip ? selectedChip.dataset.value : "",
-    date:      els.taskDate.value,
+  const payload = {
+    category: selectedChip ? selectedChip.dataset.value : "",
+    date: els.taskDate.value,
     startTime: els.taskStartTime.value,
-    endTime:   els.taskEndTime.value,
-  });
+    endTime: els.taskEndTime.value,
+  };
+
+  if (editingTaskId) {
+    const task = tasks.find((item) => item.id === editingTaskId);
+    if (task) {
+      task.title = title;
+      task.category = payload.category;
+      task.date = payload.date;
+      task.startTime = payload.startTime;
+      task.endTime = payload.endTime;
+      task.updatedAt = Date.now();
+      await saveTasks(tasks);
+      await syncTodayProgressToFirebase();
+    }
+  } else {
+    await addTask(title, payload);
+  }
+
   closeModal();
   renderAll();
 }
@@ -862,6 +980,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   els.bar               = document.getElementById("progress-bar");
   els.empty             = document.getElementById("empty-state");
   els.modal             = document.getElementById("add-modal");
+  els.modalSubmit       = document.getElementById("modal-submit");
   els.achievementPct    = document.getElementById("achievement-pct");
   els.achievementCircle = document.getElementById("achievement-circle");
   els.taskDate          = document.getElementById("task-date");
@@ -887,10 +1006,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("add-btn").addEventListener("click", () => openModal());
   document.getElementById("add-btn-tasks").addEventListener("click", () => openModal(dateToStr(navDate)));
   document.getElementById("modal-cancel").addEventListener("click", closeModal);
-  document.getElementById("modal-submit").addEventListener("click", handleAdd);
+  els.modalSubmit.addEventListener("click", handleSubmit);
 
   els.input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter")  handleAdd();
+    if (e.key === "Enter")  handleSubmit();
     if (e.key === "Escape") closeModal();
   });
 
