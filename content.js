@@ -22,9 +22,6 @@ function loadBlockedUrls(callback) {
   }
 }
 
-// 初期読み込み
-loadBlockedUrls();
-
 function shouldBlockUrl(url, taskState) {
   if (!taskState?.studyMode || !taskState?.hasPendingTasks) return false;
   return BLOCK_URLS.some((blocked) => url.includes(blocked));
@@ -55,14 +52,17 @@ function loadStateAndHandle() {
   });
 }
 
-loadStateAndHandle();
+// BLOCK_URLS を読み込んでから判定（レースコンディション防止）
+loadBlockedUrls(() => {
+  loadStateAndHandle();
 
-chrome.runtime.sendMessage({ type: "GET_TASK_STATE" }, (taskState) => {
-  if (chrome.runtime.lastError) {
-    console.warn("[content] runtime sendMessage failed", chrome.runtime.lastError);
-    return;
-  }
-  handleTaskState(taskState || {});
+  chrome.runtime.sendMessage({ type: "GET_TASK_STATE" }, (taskState) => {
+    if (chrome.runtime.lastError) {
+      console.warn("[content] runtime sendMessage failed", chrome.runtime.lastError);
+      return;
+    }
+    handleTaskState(taskState || {});
+  });
 });
 
 chrome.storage.onChanged.addListener((changes, areaName) => {

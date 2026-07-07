@@ -923,7 +923,7 @@ function switchView(viewName) {
 
 // ====== 設定タブ UI ======
 
-let blockUrls = ["https://www.youtube.com/"];
+let blockUrls = [];
 
 function renderBlockUrls() {
   els.blockUrlList.innerHTML = "";
@@ -948,8 +948,9 @@ function renderBlockUrls() {
     removeBtn.className = "block-url-item__remove";
     removeBtn.textContent = "×";
     removeBtn.setAttribute("aria-label", `${url}を削除`);
-    removeBtn.addEventListener("click", () => {
+    removeBtn.addEventListener("click", async () => {
       blockUrls.splice(i, 1);
+      await saveBlockedSites(blockUrls);
       renderBlockUrls();
     });
 
@@ -959,11 +960,12 @@ function renderBlockUrls() {
   });
 }
 
-function handleAddBlockUrl() {
+async function handleAddBlockUrl() {
   const url = els.blockUrlInput.value.trim();
   if (!url) return;
   if (!blockUrls.includes(url)) {
     blockUrls.push(url);
+    await saveBlockedSites(blockUrls);
     renderBlockUrls();
   }
   els.blockUrlInput.value = "";
@@ -1080,6 +1082,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 初期描画
   tasks = await loadTasks();
   renderAll();
+  blockUrls = await loadBlockedSites();
   renderBlockUrls();
 
   // プロフィール・グループ共有
