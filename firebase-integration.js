@@ -1,7 +1,9 @@
 (function(){
   // Firebase integration for app UI: anonymous auth, subscribe tasks, store to chrome.storage.local
   let unsubscribe = null;
+  let unsubscribeSettings = null;
   let subscribedUid = null;
+  let lastFirebaseStudyMode = null; // 無限ループ防止
 
   function $(sel){ return document.getElementById(sel); }
   const statusEl = $('firebase-sync-status');
@@ -77,6 +79,32 @@
         setStatus('Firebase接続エラー', 'error');
         console.error('[Firebase Integration] subscribe error', err);
       });
+
+      // studyMode の Firestore 同期（Firestore → chrome.storage.local → popup/app.html 両方に反映）
+      if (window.studyFirebase.subscribeSettings) {
+        if (unsubscribeSettings) { unsubscribeSettings(); unsubscribeSettings = null; }
+        unsubscribeSettings = window.studyFirebase.subscribeSettings(uid, (settings) => {
+          if (typeof settings.studyMode !== 'boolean') return;
+          lastFirebaseStudyMode = settings.studyMode;
+          if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            chrome.storage.local.set({ studyMode: settings.studyMode });
+          } else {
+            try { localStorage.setItem('studyMode', JSON.stringify(settings.studyMode)); } catch(e){}
+          }
+          console.log(`[Firebase Integration] studyMode synced: ${settings.studyMode}`);
+        }, (err) => {
+          console.error('[Firebase Integration] settings subscribe error', err);
+        });
+
+        // 起動時にローカルの studyMode を Firestore へ初期プッシュ
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+          chrome.storage.local.get(['studyMode'], (res) => {
+            const mode = res?.studyMode ?? false;
+            window.studyFirebase.upsertSettings(uid, { studyMode: mode }).catch(e =>
+              console.error('[Firebase Integration] settings push error', e));
+          });
+        }
+      }
 
       // Initial push: read local tasks and upsert to Firestore (do not bulk-delete remote)
       try {
@@ -230,7 +258,19 @@
   let storageListener = null;
   function onStorageChange(changes, area) {
     if (area !== 'local') return;
-    if (!changes.tasks) return; // ignore other keys (including firebaseTasks)
+
+    // studyMode の変化 → Firestore に反映（Firebase からの更新は無視して無限ループ防止）
+    if (changes.studyMode && subscribedUid && window.studyFirebase && window.studyFirebase.upsertSettings) {
+      const newMode = changes.studyMode.newValue;
+      if (typeof newMode === 'boolean' && newMode !== lastFirebaseStudyMode) {
+        lastFirebaseStudyMode = newMode;
+        window.studyFirebase.upsertSettings(subscribedUid, { studyMode: newMode })
+          .then(() => console.log(`[Firebase Integration] studyMode pushed: ${newMode}`))
+          .catch(e => console.error('[Firebase Integration] studyMode push error', e));
+      }
+    }
+
+    if (!changes.tasks) return;
     const { oldValue, newValue } = changes.tasks;
     const before = Array.isArray(oldValue) ? oldValue : [];
     const after = Array.isArray(newValue) ? newValue : [];
