@@ -1,0 +1,97 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function groupPath(groupId) {
+      return /databases/$(database)/documents/groups/$(groupId);
+    }
+
+    function memberPath(groupId, uid) {
+      return /databases/$(database)/documents/groups/$(groupId)/members/$(uid);
+    }
+
+    function isGroupMember(groupId) {
+      return signedIn() && exists(memberPath(groupId, request.auth.uid));
+    }
+
+    function isGroupOwner(groupId) {
+      return isGroupMember(groupId)
+        && get(memberPath(groupId, request.auth.uid)).data.role == 'owner';
+    }
+
+    match /users/{uid} {
+      allow read, create, update: if isSelf(uid);
+      allow delete: if false;
+
+      match /tasks/{taskId} {
+        allow read, create, update, delete: if isSelf(uid);
+      }
+
+      match /settings/{settingsId} {
+        allow read, create, update, delete: if isSelf(uid);
+      }
+    }
+
+    match /groups/{groupId} {
+      allow create: if signedIn()
+        && request.resource.data.ownerUid == request.auth.uid;
+      allow read: if isGroupMember(groupId)
+        || (signedIn() && resource.data.ownerUid == request.auth.uid);
+      allow update: if isGroupOwner(groupId);
+      allow delete: if false;
+
+      match /members/{uid} {
+        allow read: if isGroupMember(groupId);
+        allow create: if isSelf(uid)
+          && request.resource.data.uid == uid
+          && (
+            (
+              request.resource.data.role == 'owner'
+              && getAfter(groupPath(groupId)).data.ownerUid == request.auth.uid
+            )
+            || (
+              request.resource.data.role == 'member'
+              && exists(groupPath(groupId))
+            )
+          );
+        allow update: if isSelf(uid)
+          && resource.data.uid == uid
+          && request.resource.data.uid == uid
+          && request.resource.data.role == resource.data.role;
+        allow delete: if isSelf(uid) || isGroupOwner(groupId);
+      }
+
+      match /unlockRequests/{requestId} {
+        allow read: if isGroupMember(groupId);
+        allow create: if isGroupMember(groupId)
+          && request.resource.data.requesterUid == request.auth.uid
+          && request.resource.data.status == 'pending'
+          && request.resource.data.approvedBy == null
+          && request.resource.data.approvedAt == null;
+        allow update: if isGroupMember(groupId)
+          && resource.data.status == 'pending'
+          && request.resource.data.status == 'approved'
+          && request.resource.data.approvedBy == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'approvedBy', 'approvedAt']);
+        allow delete: if false;
+      }
+
+      match /unlockHistory/{historyId} {
+        allow read: if isGroupMember(groupId);
+        allow create: if isGroupMember(groupId)
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.type == 'emergency';
+        allow update, delete: if false;
+      }
+    }
+  }
+}

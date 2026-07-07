@@ -1,8 +1,8 @@
 (() => {
-  // node_modules/@firebase/util/dist/postinstall.mjs
+  // node_modules/.pnpm/@firebase+util@1.15.1/node_modules/@firebase/util/dist/postinstall.mjs
   var getDefaultsFromPostinstall = () => void 0;
 
-  // node_modules/@firebase/util/dist/index.esm.js
+  // node_modules/.pnpm/@firebase+util@1.15.1/node_modules/@firebase/util/dist/index.esm.js
   var stringToByteArray$1 = function(str) {
     const out = [];
     let p = 0;
@@ -727,7 +727,7 @@
     return result.ok;
   }
 
-  // node_modules/@firebase/component/dist/esm/index.esm.js
+  // node_modules/.pnpm/@firebase+component@0.7.3/node_modules/@firebase/component/dist/esm/index.esm.js
   var Component = class {
     /**
      *
@@ -1014,7 +1014,7 @@
     }
   };
 
-  // node_modules/@firebase/logger/dist/esm/index.esm.js
+  // node_modules/.pnpm/@firebase+logger@0.5.1/node_modules/@firebase/logger/dist/esm/index.esm.js
   var instances = [];
   var LogLevel;
   (function(LogLevel2) {
@@ -1120,7 +1120,7 @@
     }
   };
 
-  // node_modules/idb/build/wrap-idb-value.js
+  // node_modules/.pnpm/idb@7.1.1/node_modules/idb/build/wrap-idb-value.js
   var instanceOfAny = (object, constructors) => constructors.some((c) => object instanceof c);
   var idbProxyableTypes;
   var cursorAdvanceMethods;
@@ -1263,7 +1263,7 @@
   }
   var unwrap = (value) => reverseTransformCache.get(value);
 
-  // node_modules/idb/build/index.js
+  // node_modules/.pnpm/idb@7.1.1/node_modules/idb/build/index.js
   function openDB(name4, version4, { blocked, upgrade, blocking, terminated } = {}) {
     const request = indexedDB.open(name4, version4);
     const openPromise = wrap(request);
@@ -1327,7 +1327,7 @@
     has: (target, prop) => !!getMethod(target, prop) || oldTraps.has(target, prop)
   }));
 
-  // node_modules/@firebase/app/dist/esm/index.esm.js
+  // node_modules/.pnpm/@firebase+app@0.15.0/node_modules/@firebase/app/dist/esm/index.esm.js
   var PlatformLoggerServiceImpl = class {
     constructor(container) {
       this.container = container;
@@ -1918,7 +1918,7 @@
   }
   registerCoreComponents("");
 
-  // node_modules/@firebase/auth/dist/web-extension-esm/register-293ebff1.js
+  // node_modules/.pnpm/@firebase+auth@1.13.3_@firebase+app@0.15.0/node_modules/@firebase/auth/dist/web-extension-esm/register-293ebff1.js
   function _prodErrorMap() {
     return {
       [
@@ -6118,7 +6118,7 @@
     registerVersion(name2, version2, "esm2020");
   }
 
-  // node_modules/@firebase/auth/dist/web-extension-esm/index.js
+  // node_modules/.pnpm/@firebase+auth@1.13.3_@firebase+app@0.15.0/node_modules/@firebase/auth/dist/web-extension-esm/index.js
   function getAuth(app2 = getApp()) {
     const provider = _getProvider(app2, "auth");
     if (provider.isInitialized()) {
@@ -6138,12 +6138,12 @@
     /* ClientPlatform.WEB_EXTENSION */
   );
 
-  // node_modules/firebase/app/dist/esm/index.esm.js
+  // node_modules/.pnpm/firebase@12.15.0/node_modules/firebase/app/dist/esm/index.esm.js
   var name3 = "firebase";
   var version3 = "12.15.0";
   registerVersion(name3, version3, "app");
 
-  // node_modules/@firebase/webchannel-wrapper/dist/bloom-blob/esm/bloom_blob_es2018.js
+  // node_modules/.pnpm/@firebase+webchannel-wrapper@1.0.6/node_modules/@firebase/webchannel-wrapper/dist/bloom-blob/esm/bloom_blob_es2018.js
   var commonjsGlobal = typeof globalThis !== "undefined" ? globalThis : typeof window !== "undefined" ? window : typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : {};
   var bloom_blob_es2018 = {};
   var Integer;
@@ -6573,7 +6573,7 @@
     Integer = bloom_blob_es2018.Integer = t;
   }).apply(typeof commonjsGlobal !== "undefined" ? commonjsGlobal : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {});
 
-  // node_modules/@firebase/webchannel-wrapper/dist/webchannel-blob/esm/webchannel_blob_es2018.js
+  // node_modules/.pnpm/@firebase+webchannel-wrapper@1.0.6/node_modules/@firebase/webchannel-wrapper/dist/webchannel-blob/esm/webchannel_blob_es2018.js
   var commonjsGlobal2 = typeof globalThis !== "undefined" ? globalThis : typeof window !== "undefined" ? window : typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : {};
   var webchannel_blob_es2018 = {};
   var XhrIo;
@@ -8637,7 +8637,7 @@
     XhrIo = webchannel_blob_es2018.XhrIo = X;
   }).apply(typeof commonjsGlobal2 !== "undefined" ? commonjsGlobal2 : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {});
 
-  // node_modules/re2js/build/index.esm.js
+  // node_modules/.pnpm/re2js@0.4.3/node_modules/re2js/build/index.esm.js
   var RE2Flags = class _RE2Flags {
     // Fold case during matching (case-insensitive).
     static FOLD_CASE = 1;
@@ -13710,7 +13710,7 @@
     }
   };
 
-  // node_modules/@firebase/firestore/dist/common-456515ba.esm.js
+  // node_modules/.pnpm/@firebase+firestore@4.16.0_@firebase+app@0.15.0/node_modules/@firebase/firestore/dist/common-456515ba.esm.js
   var User = class {
     constructor(e) {
       this.uid = e;
@@ -19307,6 +19307,14 @@ Total Duration: ${a - u}ms`);
       return null !== this.fieldMask ? new __PRIVATE_PatchMutation(e, this.data, this.fieldMask, t, this.fieldTransforms) : new __PRIVATE_SetMutation(e, this.data, t, this.fieldTransforms);
     }
   };
+  var ParsedUpdateData = class {
+    constructor(e, t, n) {
+      this.data = e, this.fieldMask = t, this.fieldTransforms = n;
+    }
+    toMutation(e, t) {
+      return new __PRIVATE_PatchMutation(e, this.data, this.fieldMask, t, this.fieldTransforms);
+    }
+  };
   function __PRIVATE_isWrite(e) {
     switch (e) {
       case 0:
@@ -19433,6 +19441,15 @@ Total Duration: ${a - u}ms`);
     } else a = null, u = _.fieldTransforms;
     return new ParsedSetData(new ObjectValue(o), a, u);
   }
+  var __PRIVATE_DeleteFieldValueImpl = class ___PRIVATE_DeleteFieldValueImpl extends FieldValue {
+    _toFieldTransform(e) {
+      if (2 !== e.dataSource) throw 1 === e.dataSource ? e.createError(`${this._methodName}() can only appear at the top level of your update data`) : e.createError(`${this._methodName}() cannot be used with set() unless you pass {merge:true}`);
+      return e.fieldMask.push(e.path), null;
+    }
+    isEqual(e) {
+      return e instanceof ___PRIVATE_DeleteFieldValueImpl;
+    }
+  };
   var __PRIVATE_ServerTimestampFieldValueImpl = class ___PRIVATE_ServerTimestampFieldValueImpl extends FieldValue {
     _toFieldTransform(e) {
       return new FieldTransform(e.path, new __PRIVATE_ServerTimestampTransform());
@@ -19441,6 +19458,44 @@ Total Duration: ${a - u}ms`);
       return e instanceof ___PRIVATE_ServerTimestampFieldValueImpl;
     }
   };
+  function __PRIVATE_parseUpdateData(e, t, n, r) {
+    const i = e.createContext(1, t, n);
+    __PRIVATE_validatePlainObject("Data must be an object, but it was:", i, r);
+    const s = [], _ = ObjectValue.empty();
+    forEach(r, ((e2, r2) => {
+      const o2 = __PRIVATE_fieldPathFromDotSeparatedString(t, e2, n);
+      r2 = getModularInstance(r2);
+      const a = i.childContextForFieldPath(o2);
+      if (r2 instanceof __PRIVATE_DeleteFieldValueImpl)
+        s.push(o2);
+      else {
+        const e3 = __PRIVATE_parseData(r2, a);
+        null != e3 && (s.push(o2), _.set(o2, e3));
+      }
+    }));
+    const o = new FieldMask(s);
+    return new ParsedUpdateData(_, o, i.fieldTransforms);
+  }
+  function __PRIVATE_parseUpdateVarargs(e, t, n, r, i, s) {
+    const _ = e.createContext(1, t, n), o = [__PRIVATE_fieldPathFromArgument(t, r, n)], a = [i];
+    if (s.length % 2 != 0) throw new FirestoreError(D.INVALID_ARGUMENT, `Function ${t}() needs to be called with an even number of arguments that alternate between field names and values.`);
+    for (let e2 = 0; e2 < s.length; e2 += 2) o.push(__PRIVATE_fieldPathFromArgument(t, s[e2])), a.push(s[e2 + 1]);
+    const u = [], c = ObjectValue.empty();
+    for (let e2 = o.length - 1; e2 >= 0; --e2) if (!__PRIVATE_fieldMaskContains(u, o[e2])) {
+      const t2 = o[e2];
+      let n2 = a[e2];
+      n2 = getModularInstance(n2);
+      const r2 = _.childContextForFieldPath(t2);
+      if (n2 instanceof __PRIVATE_DeleteFieldValueImpl)
+        u.push(t2);
+      else {
+        const e3 = __PRIVATE_parseData(n2, r2);
+        null != e3 && (u.push(t2), c.set(t2, e3));
+      }
+    }
+    const E = new FieldMask(u);
+    return new ParsedUpdateData(c, E, _.fieldTransforms);
+  }
   function __PRIVATE_parseQueryValue(e, t, n, r = false) {
     return __PRIVATE_parseData(n, e.createContext(r ? 4 : 3, t));
   }
@@ -27457,7 +27512,7 @@ This typically indicates that your device does not have a healthy Internet conne
     }
   };
 
-  // node_modules/@firebase/firestore/dist/index.esm.js
+  // node_modules/.pnpm/@firebase+firestore@4.16.0_@firebase+app@0.15.0/node_modules/@firebase/firestore/dist/index.esm.js
   var Yt2 = "@firebase/firestore";
   var Kt2 = "4.16.0";
   function __PRIVATE_isPartialObserver(t) {
@@ -27619,10 +27674,6 @@ This typically indicates that your device does not have a healthy Internet conne
       return n;
     }
   };
-  function where(t, e, n) {
-    const r = e, s = __PRIVATE_fieldPathFromArgument("where", t);
-    return QueryFieldFilterConstraint._create(s, r, n);
-  }
   var QueryCompositeFilterConstraint = class _QueryCompositeFilterConstraint extends AppliableConstraint {
     /**
      * @internal
@@ -27956,10 +28007,69 @@ This typically indicates that your device does not have a healthy Internet conne
     bundleName: property("string"),
     bundle: property("string")
   };
+  var WriteBatch = class {
+    /** @hideconstructor */
+    constructor(t, e) {
+      this._firestore = t, this._commitHandler = e, this._mutations = [], this._committed = false, this._dataReader = __PRIVATE_newUserDataReader(t);
+    }
+    set(t, e, n) {
+      this._verifyNotCommitted();
+      const r = __PRIVATE_validateReference(t, this._firestore), s = __PRIVATE_applyFirestoreDataConverter(r.converter, e, n), a = __PRIVATE_parseSetData(this._dataReader, "WriteBatch.set", r._key, s, null !== r.converter, n);
+      return this._mutations.push(a.toMutation(r._key, Precondition.none())), this;
+    }
+    update(t, e, n, ...r) {
+      this._verifyNotCommitted();
+      const s = __PRIVATE_validateReference(t, this._firestore);
+      let a;
+      return a = "string" == typeof (e = getModularInstance(e)) || e instanceof FieldPath ? __PRIVATE_parseUpdateVarargs(this._dataReader, "WriteBatch.update", s._key, e, n, r) : __PRIVATE_parseUpdateData(this._dataReader, "WriteBatch.update", s._key, e), this._mutations.push(a.toMutation(s._key, Precondition.exists(true))), this;
+    }
+    /**
+     * Deletes the document referred to by the provided {@link DocumentReference}.
+     *
+     * @param documentRef - A reference to the document to be deleted.
+     * @returns This `WriteBatch` instance. Used for chaining method calls.
+     */
+    delete(t) {
+      this._verifyNotCommitted();
+      const e = __PRIVATE_validateReference(t, this._firestore);
+      return this._mutations = this._mutations.concat(new __PRIVATE_DeleteMutation(e._key, Precondition.none())), this;
+    }
+    /**
+     * Commits all of the writes in this write batch as a single atomic unit.
+     *
+     * The result of these writes will only be reflected in document reads that
+     * occur after the returned promise resolves. If the client is offline, the
+     * write fails. If you would like to see local modifications or buffer writes
+     * until the client is online, use the full Firestore SDK.
+     *
+     * @returns A `Promise` resolved once all of the writes in the batch have been
+     * successfully written to the backend as an atomic unit (note that it won't
+     * resolve while you're offline).
+     */
+    commit() {
+      return this._verifyNotCommitted(), this._committed = true, this._mutations.length > 0 ? this._commitHandler(this._mutations) : Promise.resolve();
+    }
+    _verifyNotCommitted() {
+      if (this._committed) throw new FirestoreError(D.FAILED_PRECONDITION, "A write batch can no longer be used after commit() has been called.");
+    }
+  };
+  function __PRIVATE_validateReference(t, e) {
+    if ((t = getModularInstance(t)).firestore !== e) throw new FirestoreError(D.INVALID_ARGUMENT, "Provided document reference is from a different Firestore instance.");
+    return t;
+  }
   function setDoc(t, e, n) {
     t = __PRIVATE_cast(t, DocumentReference);
     const r = __PRIVATE_cast(t.firestore, Firestore), s = __PRIVATE_applyFirestoreDataConverter(t.converter, e, n), o = __PRIVATE_newUserDataReader(r);
     return executeWrite(r, [__PRIVATE_parseSetData(o, "setDoc", t._key, s, null !== t.converter, n).toMutation(t._key, Precondition.none())]);
+  }
+  function updateDoc(t, e, n, ...r) {
+    t = __PRIVATE_cast(t, DocumentReference);
+    const s = __PRIVATE_cast(t.firestore, Firestore), o = __PRIVATE_newUserDataReader(s);
+    let i;
+    i = "string" == typeof // For Compat types, we have to "extract" the underlying types before
+    // performing validation.
+    (e = getModularInstance(e)) || e instanceof FieldPath ? __PRIVATE_parseUpdateVarargs(o, "updateDoc", t._key, e, n, r) : __PRIVATE_parseUpdateData(o, "updateDoc", t._key, e);
+    return executeWrite(s, [i.toMutation(t._key, Precondition.exists(true))]);
   }
   function deleteDoc(t) {
     return executeWrite(__PRIVATE_cast(t.firestore, Firestore), [new __PRIVATE_DeleteMutation(t._key, Precondition.none())]);
@@ -28009,6 +28119,9 @@ This typically indicates that your device does not have a healthy Internet conne
   function __PRIVATE_convertToDocSnapshot(t, e, n) {
     const r = n.docs.get(e._key), s = new __PRIVATE_ExpUserDataWriter(t);
     return new DocumentSnapshot(t, s, e._key, r, new SnapshotMetadata(n.hasPendingWrites, n.fromCache), e.converter);
+  }
+  function writeBatch(t) {
+    return t = __PRIVATE_cast(t, Firestore), ensureFirestoreConfigured(t), new WriteBatch(t, ((e) => executeWrite(t, e)));
   }
   !(function __PRIVATE_registerFirestore(h, d = true) {
     __PRIVATE_setSDKVersion(SDK_VERSION), _registerComponent(new Component("firestore", ((t, { instanceIdentifier: e, options: n }) => {
@@ -28189,43 +28302,185 @@ This typically indicates that your device does not have a healthy Internet conne
   }
 
   // src/groupRepository.js
-  function subscribeGroupMembers(groupId, onMembers, onError) {
-    if (!groupId) {
-      onMembers([]);
+  var DEFAULT_GROUP_SETTINGS = {
+    shareLevel: "progress",
+    unlockRule: "approval",
+    emergencyUnlock: true,
+    notificationLevel: "standard"
+  };
+  function normalizeText(value, fallback = "") {
+    return typeof value === "string" && value.trim() ? value.trim() : fallback;
+  }
+  function normalizeNumber(value) {
+    return typeof value === "number" && Number.isFinite(value) ? value : 0;
+  }
+  function buildMemberPayload(member, role) {
+    const uid = normalizeText(member?.uid);
+    if (!uid) throw new Error("uid is required");
+    return {
+      uid,
+      displayName: normalizeText(member?.displayName, "Anonymous"),
+      role,
+      todayProgress: normalizeNumber(member?.todayProgress),
+      completedCount: normalizeNumber(member?.completedCount),
+      totalCount: normalizeNumber(member?.totalCount),
+      studying: Boolean(member?.studying),
+      lastActiveAt: serverTimestamp()
+    };
+  }
+  async function createGroup(group = {}) {
+    const ownerUid = normalizeText(group.ownerUid || group.uid);
+    if (!ownerUid) throw new Error("ownerUid is required");
+    const groupRef = group.groupId ? doc(db, "groups", String(group.groupId)) : doc(collection(db, "groups"));
+    const groupId = groupRef.id;
+    const batch = writeBatch(db);
+    batch.set(groupRef, {
+      name: normalizeText(group.name, "New Study Group"),
+      type: normalizeText(group.type, "focus"),
+      ownerUid,
+      createdAt: serverTimestamp(),
+      settings: {
+        ...DEFAULT_GROUP_SETTINGS,
+        ...group.settings && typeof group.settings === "object" ? group.settings : {}
+      }
+    });
+    batch.set(
+      doc(db, "groups", groupId, "members", ownerUid),
+      buildMemberPayload(
+        {
+          uid: ownerUid,
+          displayName: group.ownerName || group.displayName,
+          todayProgress: group.todayProgress,
+          completedCount: group.completedCount,
+          totalCount: group.totalCount,
+          studying: group.studying
+        },
+        "owner"
+      )
+    );
+    await batch.commit();
+    return { groupId };
+  }
+  async function joinGroup(groupId, member = {}) {
+    const normalizedGroupId = normalizeText(groupId);
+    if (!normalizedGroupId) throw new Error("groupId is required");
+    const payload = buildMemberPayload(member, "member");
+    await writeBatch(db).set(doc(db, "groups", normalizedGroupId, "members", payload.uid), payload, { merge: true }).commit();
+    return { groupId: normalizedGroupId, uid: payload.uid };
+  }
+  function subscribeGroupMembers(groupId, onChange, onError) {
+    const normalizedGroupId = normalizeText(groupId);
+    if (!normalizedGroupId) {
+      onChange([]);
       return () => {
       };
     }
-    const usersCollection = collection(db, "users");
-    const q = query(
-      usersCollection,
-      where("groupId", "==", groupId),
-      orderBy("updatedAt", "desc")
+    const membersQuery = query(
+      collection(db, "groups", normalizedGroupId, "members"),
+      orderBy("lastActiveAt", "desc")
     );
     return onSnapshot(
-      q,
+      membersQuery,
       (snapshot) => {
         const members = snapshot.docs.map((docSnapshot) => {
           const data = docSnapshot.data();
-          const todayProgress = typeof data?.todayProgress === "number" ? data.todayProgress : 0;
-          const completedCount = typeof data?.completedCount === "number" ? data.completedCount : 0;
-          const totalCount = typeof data?.totalCount === "number" ? data.totalCount : 0;
-          const rawUpdatedAt = data?.updatedAt;
-          const lastActiveAt = data?.lastActiveAt;
           return {
-            uid: docSnapshot.id,
-            displayName: data?.displayName || "\u540D\u524D\u672A\u8A2D\u5B9A",
-            groupId: data?.groupId || "",
-            todayProgress,
-            completedCount,
-            totalCount,
-            lastActiveAt: rawUpdatedAt || lastActiveAt || null,
-            updatedAt: rawUpdatedAt || null
+            uid: data?.uid || docSnapshot.id,
+            displayName: data?.displayName || "Anonymous",
+            role: data?.role || "member",
+            todayProgress: normalizeNumber(data?.todayProgress),
+            completedCount: normalizeNumber(data?.completedCount),
+            totalCount: normalizeNumber(data?.totalCount),
+            studying: Boolean(data?.studying),
+            lastActiveAt: data?.lastActiveAt || null
           };
         });
-        onMembers(members);
+        onChange(members);
       },
       onError
     );
+  }
+
+  // src/unlockRequestRepository.js
+  function normalizeText2(value, fallback = "") {
+    return typeof value === "string" && value.trim() ? value.trim() : fallback;
+  }
+  function normalizeNumber2(value) {
+    return typeof value === "number" && Number.isFinite(value) ? value : 0;
+  }
+  async function createUnlockRequest(groupId, request = {}) {
+    const normalizedGroupId = normalizeText2(groupId);
+    const requesterUid = normalizeText2(request.requesterUid || request.uid);
+    if (!normalizedGroupId) throw new Error("groupId is required");
+    if (!requesterUid) throw new Error("requesterUid is required");
+    const requestRef = doc(collection(db, "groups", normalizedGroupId, "unlockRequests"));
+    await setDoc(requestRef, {
+      requesterUid,
+      requesterName: normalizeText2(request.requesterName || request.displayName, "Anonymous"),
+      reason: normalizeText2(request.reason),
+      status: "pending",
+      requestedAt: serverTimestamp(),
+      approvedBy: null,
+      approvedAt: null
+    });
+    return { groupId: normalizedGroupId, requestId: requestRef.id };
+  }
+  function subscribeUnlockRequests(groupId, onChange, onError) {
+    const normalizedGroupId = normalizeText2(groupId);
+    if (!normalizedGroupId) {
+      onChange([]);
+      return () => {
+      };
+    }
+    const requestsQuery = query(
+      collection(db, "groups", normalizedGroupId, "unlockRequests"),
+      orderBy("requestedAt", "desc")
+    );
+    return onSnapshot(
+      requestsQuery,
+      (snapshot) => {
+        const requests = snapshot.docs.map((docSnapshot) => ({
+          id: docSnapshot.id,
+          ...docSnapshot.data()
+        }));
+        onChange(requests);
+      },
+      onError
+    );
+  }
+  async function approveUnlockRequest(groupId, requestId, approverUid) {
+    const normalizedGroupId = normalizeText2(groupId);
+    const normalizedRequestId = normalizeText2(requestId);
+    const normalizedApproverUid = normalizeText2(approverUid);
+    if (!normalizedGroupId) throw new Error("groupId is required");
+    if (!normalizedRequestId) throw new Error("requestId is required");
+    if (!normalizedApproverUid) throw new Error("approverUid is required");
+    await updateDoc(doc(db, "groups", normalizedGroupId, "unlockRequests", normalizedRequestId), {
+      status: "approved",
+      approvedBy: normalizedApproverUid,
+      approvedAt: serverTimestamp()
+    });
+    return {
+      groupId: normalizedGroupId,
+      requestId: normalizedRequestId,
+      approvedBy: normalizedApproverUid
+    };
+  }
+  async function createEmergencyUnlockHistory(groupId, history = {}) {
+    const normalizedGroupId = normalizeText2(groupId);
+    const uid = normalizeText2(history.uid);
+    if (!normalizedGroupId) throw new Error("groupId is required");
+    if (!uid) throw new Error("uid is required");
+    const historyRef = doc(collection(db, "groups", normalizedGroupId, "unlockHistory"));
+    await setDoc(historyRef, {
+      uid,
+      displayName: normalizeText2(history.displayName, "Anonymous"),
+      type: "emergency",
+      reason: normalizeText2(history.reason),
+      progressAtUnlock: normalizeNumber2(history.progressAtUnlock),
+      unlockedAt: serverTimestamp()
+    });
+    return { groupId: normalizedGroupId, historyId: historyRef.id };
   }
 
   // src/firebase-entry.js
@@ -28252,6 +28507,42 @@ This typically indicates that your device does not have a healthy Internet conne
       tasksList.appendChild(li);
     });
   }
+  async function createGroup2(group = {}) {
+    const user = await ensureAnonymousUser();
+    return createGroup({
+      ...group,
+      ownerUid: group.ownerUid || group.uid || user.uid,
+      displayName: group.displayName || user.displayName || ""
+    });
+  }
+  async function joinGroup2(groupId, member = {}) {
+    const user = await ensureAnonymousUser();
+    return joinGroup(groupId, {
+      ...member,
+      uid: member.uid || user.uid,
+      displayName: member.displayName || user.displayName || ""
+    });
+  }
+  async function createUnlockRequest2(groupId, request = {}) {
+    const user = await ensureAnonymousUser();
+    return createUnlockRequest(groupId, {
+      ...request,
+      requesterUid: request.requesterUid || request.uid || user.uid,
+      requesterName: request.requesterName || request.displayName || user.displayName || ""
+    });
+  }
+  async function approveUnlockRequest2(groupId, requestId, approverUid) {
+    const user = await ensureAnonymousUser();
+    return approveUnlockRequest(groupId, requestId, approverUid || user.uid);
+  }
+  async function createEmergencyUnlockHistory2(groupId, history = {}) {
+    const user = await ensureAnonymousUser();
+    return createEmergencyUnlockHistory(groupId, {
+      ...history,
+      uid: history.uid || user.uid,
+      displayName: history.displayName || user.displayName || ""
+    });
+  }
   window.studyFirebase = {
     ensureAnonymousUser,
     upsertTask,
@@ -28259,7 +28550,13 @@ This typically indicates that your device does not have a healthy Internet conne
     subscribeTasks,
     upsertUserProfile,
     updateTodayProgress,
-    subscribeGroupMembers
+    createGroup: createGroup2,
+    joinGroup: joinGroup2,
+    subscribeGroupMembers,
+    createUnlockRequest: createUnlockRequest2,
+    subscribeUnlockRequests,
+    approveUnlockRequest: approveUnlockRequest2,
+    createEmergencyUnlockHistory: createEmergencyUnlockHistory2
   };
   console.log("[Firebase] Firebase bundle loaded");
   async function init() {
@@ -28289,6 +28586,25 @@ This typically indicates that your device does not have a healthy Internet conne
   init();
 })();
 /*! Bundled license information:
+
+@firebase/util/dist/postinstall.mjs:
+@firebase/firestore/dist/common-456515ba.esm.js:
+  (**
+   * @license
+   * Copyright 2025 Google LLC
+   *
+   * Licensed under the Apache License, Version 2.0 (the "License");
+   * you may not use this file except in compliance with the License.
+   * You may obtain a copy of the License at
+   *
+   *   http://www.apache.org/licenses/LICENSE-2.0
+   *
+   * Unless required by applicable law or agreed to in writing, software
+   * distributed under the License is distributed on an "AS IS" BASIS,
+   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   * See the License for the specific language governing permissions and
+   * limitations under the License.
+   *)
 
 @firebase/util/dist/index.esm.js:
 @firebase/util/dist/index.esm.js:
@@ -28460,7 +28776,6 @@ firebase/app/dist/esm/index.esm.js:
 @firebase/firestore/dist/common-456515ba.esm.js:
 @firebase/firestore/dist/common-456515ba.esm.js:
 @firebase/firestore/dist/common-456515ba.esm.js:
-@firebase/firestore/dist/index.esm.js:
 @firebase/firestore/dist/index.esm.js:
 @firebase/firestore/dist/index.esm.js:
 @firebase/firestore/dist/index.esm.js:
@@ -29684,24 +29999,6 @@ re2js/build/index.esm.js:
   (**
    * @license
    * Copyright 2020 Google LLC
-   *
-   * Licensed under the Apache License, Version 2.0 (the "License");
-   * you may not use this file except in compliance with the License.
-   * You may obtain a copy of the License at
-   *
-   *   http://www.apache.org/licenses/LICENSE-2.0
-   *
-   * Unless required by applicable law or agreed to in writing, software
-   * distributed under the License is distributed on an "AS IS" BASIS,
-   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   * See the License for the specific language governing permissions and
-   * limitations under the License.
-   *)
-
-@firebase/firestore/dist/common-456515ba.esm.js:
-  (**
-   * @license
-   * Copyright 2025 Google LLC
    *
    * Licensed under the Apache License, Version 2.0 (the "License");
    * you may not use this file except in compliance with the License.
