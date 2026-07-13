@@ -923,7 +923,7 @@ function switchView(viewName) {
 
 // ====== 設定タブ UI ======
 
-let blockUrls = ["https://www.youtube.com/"];
+let blockUrls = [];
 
 function renderBlockUrls() {
   els.blockUrlList.innerHTML = "";
@@ -948,8 +948,9 @@ function renderBlockUrls() {
     removeBtn.className = "block-url-item__remove";
     removeBtn.textContent = "×";
     removeBtn.setAttribute("aria-label", `${url}を削除`);
-    removeBtn.addEventListener("click", () => {
+    removeBtn.addEventListener("click", async () => {
       blockUrls.splice(i, 1);
+      await saveBlockedSites(blockUrls);
       renderBlockUrls();
     });
 
@@ -959,11 +960,12 @@ function renderBlockUrls() {
   });
 }
 
-function handleAddBlockUrl() {
+async function handleAddBlockUrl() {
   const url = els.blockUrlInput.value.trim();
   if (!url) return;
   if (!blockUrls.includes(url)) {
     blockUrls.push(url);
+    await saveBlockedSites(blockUrls);
     renderBlockUrls();
   }
   els.blockUrlInput.value = "";
@@ -1057,9 +1059,30 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (e.key === "Enter") handleAddBlockUrl();
   });
 
+  // 設定：スタディモードトグル（主導権：chrome.storage.local が唯一の真実）
+  const studyToggle = document.getElementById("study-mode-toggle");
+  if (studyToggle) {
+    // 起動時に現在値を反映
+    await syncStudyModeUi();
+
+    // トグル操作 → storage に保存（popup にも自動反映される）
+    studyToggle.addEventListener("change", async () => {
+      await saveStudyMode(studyToggle.checked);
+    });
+
+    // popup など他からの変更 → トグルを最新値に更新
+    if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.onChanged) {
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area !== "local" || !Object.prototype.hasOwnProperty.call(changes, "studyMode")) return;
+        studyToggle.checked = Boolean(changes.studyMode.newValue);
+      });
+    }
+  }
+
   // 初期描画
   tasks = await loadTasks();
   renderAll();
+  blockUrls = await loadBlockedSites();
   renderBlockUrls();
 
   // プロフィール・グループ共有
