@@ -1,8 +1,8 @@
 (() => {
-  // node_modules/.pnpm/@firebase+util@1.15.1/node_modules/@firebase/util/dist/postinstall.mjs
+  // node_modules/@firebase/util/dist/postinstall.mjs
   var getDefaultsFromPostinstall = () => void 0;
 
-  // node_modules/.pnpm/@firebase+util@1.15.1/node_modules/@firebase/util/dist/index.esm.js
+  // node_modules/@firebase/util/dist/index.esm.js
   var stringToByteArray$1 = function(str) {
     const out = [];
     let p = 0;
@@ -727,7 +727,7 @@
     return result.ok;
   }
 
-  // node_modules/.pnpm/@firebase+component@0.7.3/node_modules/@firebase/component/dist/esm/index.esm.js
+  // node_modules/@firebase/component/dist/esm/index.esm.js
   var Component = class {
     /**
      *
@@ -1014,7 +1014,7 @@
     }
   };
 
-  // node_modules/.pnpm/@firebase+logger@0.5.1/node_modules/@firebase/logger/dist/esm/index.esm.js
+  // node_modules/@firebase/logger/dist/esm/index.esm.js
   var instances = [];
   var LogLevel;
   (function(LogLevel2) {
@@ -1120,7 +1120,7 @@
     }
   };
 
-  // node_modules/.pnpm/idb@7.1.1/node_modules/idb/build/wrap-idb-value.js
+  // node_modules/idb/build/wrap-idb-value.js
   var instanceOfAny = (object, constructors) => constructors.some((c) => object instanceof c);
   var idbProxyableTypes;
   var cursorAdvanceMethods;
@@ -1263,7 +1263,7 @@
   }
   var unwrap = (value) => reverseTransformCache.get(value);
 
-  // node_modules/.pnpm/idb@7.1.1/node_modules/idb/build/index.js
+  // node_modules/idb/build/index.js
   function openDB(name4, version4, { blocked, upgrade, blocking, terminated } = {}) {
     const request = indexedDB.open(name4, version4);
     const openPromise = wrap(request);
@@ -1327,7 +1327,7 @@
     has: (target, prop) => !!getMethod(target, prop) || oldTraps.has(target, prop)
   }));
 
-  // node_modules/.pnpm/@firebase+app@0.15.0/node_modules/@firebase/app/dist/esm/index.esm.js
+  // node_modules/@firebase/app/dist/esm/index.esm.js
   var PlatformLoggerServiceImpl = class {
     constructor(container) {
       this.container = container;
@@ -1918,7 +1918,7 @@
   }
   registerCoreComponents("");
 
-  // node_modules/.pnpm/@firebase+auth@1.13.3_@firebase+app@0.15.0/node_modules/@firebase/auth/dist/web-extension-esm/register-293ebff1.js
+  // node_modules/@firebase/auth/dist/web-extension-esm/register-293ebff1.js
   function _prodErrorMap() {
     return {
       [
@@ -6118,7 +6118,7 @@
     registerVersion(name2, version2, "esm2020");
   }
 
-  // node_modules/.pnpm/@firebase+auth@1.13.3_@firebase+app@0.15.0/node_modules/@firebase/auth/dist/web-extension-esm/index.js
+  // node_modules/@firebase/auth/dist/web-extension-esm/index.js
   function getAuth(app2 = getApp()) {
     const provider = _getProvider(app2, "auth");
     if (provider.isInitialized()) {
@@ -6138,12 +6138,12 @@
     /* ClientPlatform.WEB_EXTENSION */
   );
 
-  // node_modules/.pnpm/firebase@12.15.0/node_modules/firebase/app/dist/esm/index.esm.js
+  // node_modules/firebase/app/dist/esm/index.esm.js
   var name3 = "firebase";
   var version3 = "12.15.0";
   registerVersion(name3, version3, "app");
 
-  // node_modules/.pnpm/@firebase+webchannel-wrapper@1.0.6/node_modules/@firebase/webchannel-wrapper/dist/bloom-blob/esm/bloom_blob_es2018.js
+  // node_modules/@firebase/webchannel-wrapper/dist/bloom-blob/esm/bloom_blob_es2018.js
   var commonjsGlobal = typeof globalThis !== "undefined" ? globalThis : typeof window !== "undefined" ? window : typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : {};
   var bloom_blob_es2018 = {};
   var Integer;
@@ -6573,7 +6573,7 @@
     Integer = bloom_blob_es2018.Integer = t;
   }).apply(typeof commonjsGlobal !== "undefined" ? commonjsGlobal : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {});
 
-  // node_modules/.pnpm/@firebase+webchannel-wrapper@1.0.6/node_modules/@firebase/webchannel-wrapper/dist/webchannel-blob/esm/webchannel_blob_es2018.js
+  // node_modules/@firebase/webchannel-wrapper/dist/webchannel-blob/esm/webchannel_blob_es2018.js
   var commonjsGlobal2 = typeof globalThis !== "undefined" ? globalThis : typeof window !== "undefined" ? window : typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : {};
   var webchannel_blob_es2018 = {};
   var XhrIo;
@@ -8637,7 +8637,7 @@
     XhrIo = webchannel_blob_es2018.XhrIo = X;
   }).apply(typeof commonjsGlobal2 !== "undefined" ? commonjsGlobal2 : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {});
 
-  // node_modules/.pnpm/re2js@0.4.3/node_modules/re2js/build/index.esm.js
+  // node_modules/re2js/build/index.esm.js
   var RE2Flags = class _RE2Flags {
     // Fold case during matching (case-insensitive).
     static FOLD_CASE = 1;
@@ -13710,7 +13710,7 @@
     }
   };
 
-  // node_modules/.pnpm/@firebase+firestore@4.16.0_@firebase+app@0.15.0/node_modules/@firebase/firestore/dist/common-456515ba.esm.js
+  // node_modules/@firebase/firestore/dist/common-456515ba.esm.js
   var User = class {
     constructor(e) {
       this.uid = e;
@@ -27512,7 +27512,7 @@ This typically indicates that your device does not have a healthy Internet conne
     }
   };
 
-  // node_modules/.pnpm/@firebase+firestore@4.16.0_@firebase+app@0.15.0/node_modules/@firebase/firestore/dist/index.esm.js
+  // node_modules/@firebase/firestore/dist/index.esm.js
   var Yt2 = "@firebase/firestore";
   var Kt2 = "4.16.0";
   function __PRIVATE_isPartialObserver(t) {
@@ -28586,25 +28586,6 @@ This typically indicates that your device does not have a healthy Internet conne
   init();
 })();
 /*! Bundled license information:
-
-@firebase/util/dist/postinstall.mjs:
-@firebase/firestore/dist/common-456515ba.esm.js:
-  (**
-   * @license
-   * Copyright 2025 Google LLC
-   *
-   * Licensed under the Apache License, Version 2.0 (the "License");
-   * you may not use this file except in compliance with the License.
-   * You may obtain a copy of the License at
-   *
-   *   http://www.apache.org/licenses/LICENSE-2.0
-   *
-   * Unless required by applicable law or agreed to in writing, software
-   * distributed under the License is distributed on an "AS IS" BASIS,
-   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   * See the License for the specific language governing permissions and
-   * limitations under the License.
-   *)
 
 @firebase/util/dist/index.esm.js:
 @firebase/util/dist/index.esm.js:
@@ -29999,6 +29980,24 @@ re2js/build/index.esm.js:
   (**
    * @license
    * Copyright 2020 Google LLC
+   *
+   * Licensed under the Apache License, Version 2.0 (the "License");
+   * you may not use this file except in compliance with the License.
+   * You may obtain a copy of the License at
+   *
+   *   http://www.apache.org/licenses/LICENSE-2.0
+   *
+   * Unless required by applicable law or agreed to in writing, software
+   * distributed under the License is distributed on an "AS IS" BASIS,
+   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   * See the License for the specific language governing permissions and
+   * limitations under the License.
+   *)
+
+@firebase/firestore/dist/common-456515ba.esm.js:
+  (**
+   * @license
+   * Copyright 2025 Google LLC
    *
    * Licensed under the Apache License, Version 2.0 (the "License");
    * you may not use this file except in compliance with the License.
