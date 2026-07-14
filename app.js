@@ -8,6 +8,7 @@ let navDate  = new Date();
 let currentUid = null;
 let currentProfile = { displayName: '', groupId: '' };
 let groupUnsubscribe = null;
+let unlockRequestUnsubscribe = null;
 let activeGroupId = '';
 let editingTaskId = null;
 let unlockRequestUiState = {
@@ -370,15 +371,79 @@ async function syncTodayProgressToFirebase() {
   }
 }
 
+function renderGroupUnlockRequests(requests = []) {
+  const list  = document.getElementById('gr-unlock-list');
+  const badge = document.getElementById('gr-unlock-badge');
+  if (!list) return;
+
+  const pending = requests.filter((r) => r.status === 'pending');
+
+  if (badge) {
+    badge.textContent = pending.length > 0 ? String(pending.length) : '';
+    badge.hidden = pending.length === 0;
+  }
+
+  if (pending.length === 0) {
+    list.innerHTML = '<p class="gr-empty-note">現在、解除申請はありません</p>';
+    return;
+  }
+
+  list.innerHTML = '';
+  pending.forEach((req) => {
+    const card = document.createElement('div');
+    card.className = 'gr-unlock-card';
+
+    const name = req.requesterName || req.displayName || '不明';
+    const reason = req.reason || '理由なし';
+    const time = req.requestedAt?.toDate
+      ? req.requestedAt.toDate().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
+      : req.requestedAt
+        ? new Date(req.requestedAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
+        : '';
+
+    card.innerHTML = `
+      <div class="gr-unlock-card__header">
+        <span class="gr-unlock-icon">🔓</span>
+        <span class="gr-unlock-user">${name}さんが解除申請中</span>
+        ${time ? `<span class="gr-unlock-time">${time}</span>` : ''}
+      </div>
+      <p class="gr-unlock-reason">理由：${reason}</p>
+      <div class="gr-unlock-actions">
+        <button class="gr-approve-btn" type="button">承認する</button>
+      </div>
+    `;
+
+    card.querySelector('.gr-approve-btn').addEventListener('click', async () => {
+      const firebaseApi = await ensureFirebaseAvailable();
+      if (!firebaseApi?.approveUnlockRequest) return;
+      try {
+        await firebaseApi.approveUnlockRequest(activeGroupId, req.id, currentUid);
+        card.querySelector('.gr-approve-btn').textContent = '承認済み ✓';
+        card.querySelector('.gr-approve-btn').disabled = true;
+      } catch (e) {
+        console.error('[Unlock] approve failed', e);
+        alert('承認に失敗しました');
+      }
+    });
+
+    list.appendChild(card);
+  });
+}
+
 async function subscribeToGroup(groupId) {
   if (groupUnsubscribe) {
     groupUnsubscribe();
     groupUnsubscribe = null;
   }
+  if (unlockRequestUnsubscribe) {
+    unlockRequestUnsubscribe();
+    unlockRequestUnsubscribe = null;
+  }
 
   activeGroupId = groupId || '';
   if (!groupId) {
     renderGroupMembers([]);
+    renderGroupUnlockRequests([]);
     return;
   }
 
@@ -387,14 +452,20 @@ async function subscribeToGroup(groupId) {
 
   groupUnsubscribe = firebaseApi.subscribeGroupMembers(
     groupId,
-    (members) => {
-      renderGroupMembers(members);
-    },
+    (members) => { renderGroupMembers(members); },
     (error) => {
       console.error('[Group Share] group subscription error', error);
       renderGroupMembers([]);
     }
   );
+
+  if (firebaseApi?.subscribeUnlockRequests) {
+    unlockRequestUnsubscribe = firebaseApi.subscribeUnlockRequests(
+      groupId,
+      (requests) => { renderGroupUnlockRequests(requests); },
+      (error) => { console.error('[Unlock] subscribe error', error); }
+    );
+  }
 }
 
 async function saveProfileAndJoinGroup() {

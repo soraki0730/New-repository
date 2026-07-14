@@ -63,6 +63,8 @@ body {
   color: #2e7d32;
 }
 
+.firebase-backup-card[hidden] { display: none; }
+
 .firebase-backup-card {
   position: absolute;
   top: 44px;
@@ -1971,6 +1973,86 @@ body {
 .reaction-btn--sent {
   background: var(--primary-light);
   transform: scale(1.2);
+}
+
+/* ===== 解除申請カード（グループタブ） ===== */
+.gr-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  background: #f44336;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 9px;
+  padding: 0 5px;
+  margin-left: 6px;
+}
+.gr-badge[hidden] { display: none; }
+
+.gr-unlock-list { display: flex; flex-direction: column; gap: 10px; }
+
+.gr-empty-note {
+  font-size: 13px;
+  color: var(--ink-soft);
+  text-align: center;
+  padding: 12px 0;
+}
+
+.gr-unlock-card {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 14px;
+  border-left: 4px solid #ff9800;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+.gr-unlock-card__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.gr-unlock-icon { font-size: 15px; }
+
+.gr-unlock-user {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  flex: 1;
+}
+
+.gr-unlock-time {
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.gr-unlock-reason {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin: 0 0 10px;
+  line-height: 1.5;
+}
+
+.gr-unlock-actions { display: flex; gap: 8px; }
+
+.gr-approve-btn {
+  flex: 1;
+  padding: 8px;
+  background: #1976d2;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.gr-approve-btn:disabled {
+  background: #90a4ae;
+  cursor: default;
 }
 
 /* ===== ACTIVITY FEED ===== */
