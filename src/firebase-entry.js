@@ -1,13 +1,17 @@
 import { ensureAnonymousUser } from './authService.js';
-import { upsertTask, subscribeTasks, deleteTask, upsertSettings, subscribeSettings } from './taskRepository.js';
+import { upsertTask, subscribeTasks, deleteTask } from './taskRepository.js';
 import { upsertUserProfile, updateTodayProgress } from './profileRepository.js';
-import { subscribeGroupMembers } from './groupRepository.js';
 import {
-  approveUnlockRequest,
-  createEmergencyUnlockHistory,
-  createUnlockRequest,
+  createGroup as createGroupRecord,
+  joinGroup as joinGroupRecord,
+  subscribeGroupMembers
+} from './groupRepository.js';
+import {
+  approveUnlockRequest as approveUnlockRequestRecord,
+  createEmergencyUnlockHistory as createEmergencyUnlockHistoryRecord,
+  createUnlockRequest as createUnlockRequestRecord,
   subscribeUnlockRequests
-} from './unlockRepository.js';
+} from './unlockRequestRepository.js';
 
 const uidEl = document.getElementById('uid');
 const statusEl = document.getElementById('status');
@@ -36,20 +40,61 @@ function renderTasks(tasks) {
   });
 }
 
+async function createGroup(group = {}) {
+  const user = await ensureAnonymousUser();
+  return createGroupRecord({
+    ...group,
+    ownerUid: group.ownerUid || group.uid || user.uid,
+    displayName: group.displayName || user.displayName || ''
+  });
+}
+
+async function joinGroup(groupId, member = {}) {
+  const user = await ensureAnonymousUser();
+  return joinGroupRecord(groupId, {
+    ...member,
+    uid: member.uid || user.uid,
+    displayName: member.displayName || user.displayName || ''
+  });
+}
+
+async function createUnlockRequest(groupId, request = {}) {
+  const user = await ensureAnonymousUser();
+  return createUnlockRequestRecord(groupId, {
+    ...request,
+    requesterUid: request.requesterUid || request.uid || user.uid,
+    requesterName: request.requesterName || request.displayName || user.displayName || ''
+  });
+}
+
+async function approveUnlockRequest(groupId, requestId, approverUid) {
+  const user = await ensureAnonymousUser();
+  return approveUnlockRequestRecord(groupId, requestId, approverUid || user.uid);
+}
+
+async function createEmergencyUnlockHistory(groupId, history = {}) {
+  const user = await ensureAnonymousUser();
+  return createEmergencyUnlockHistoryRecord(groupId, {
+    ...history,
+    uid: history.uid || user.uid,
+    displayName: history.displayName || user.displayName || ''
+  });
+}
+
 window.studyFirebase = {
   ensureAnonymousUser,
   upsertTask,
   deleteTask,
   subscribeTasks,
-  upsertSettings,
-  subscribeSettings,
   upsertUserProfile,
   updateTodayProgress,
+  createGroup,
+  joinGroup,
   subscribeGroupMembers,
   createUnlockRequest,
   subscribeUnlockRequests,
   approveUnlockRequest,
-  createEmergencyUnlockHistory,
+  createEmergencyUnlockHistory
 };
 
 console.log('[Firebase] Firebase bundle loaded');

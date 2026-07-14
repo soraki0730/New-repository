@@ -3,7 +3,7 @@
   let unsubscribe = null;
   let unsubscribeSettings = null;
   let subscribedUid = null;
-  let lastFirebaseStudyMode = null;
+  let lastFirebaseStudyMode = null; // 無限ループ防止
 
   function $(sel){ return document.getElementById(sel); }
   const statusEl = $('firebase-sync-status');
@@ -80,23 +80,23 @@
         console.warn('[Firebase Integration] subscribe error', err);
       });
 
-      // settings (studyMode) の購読
-      if (unsubscribeSettings) { unsubscribeSettings(); unsubscribeSettings = null; }
-      unsubscribeSettings = window.studyFirebase.subscribeSettings(uid, (settings) => {
-        if (typeof settings.studyMode !== 'boolean') return;
-        lastFirebaseStudyMode = settings.studyMode;
-        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-          chrome.storage.local.set({ studyMode: settings.studyMode });
-        } else {
-          try { localStorage.setItem('studyMode', JSON.stringify(settings.studyMode)); } catch(e){}
-        }
-        console.log(`[Firebase Integration] studyMode synced: ${settings.studyMode}`);
-      }, (err) => {
-        console.warn('[Firebase Integration] settings subscribe error', err);
-      });
+      // studyMode の Firestore 同期（Firestore → chrome.storage.local → popup/app.html 両方に反映）
+      if (window.studyFirebase.subscribeSettings) {
+        if (unsubscribeSettings) { unsubscribeSettings(); unsubscribeSettings = null; }
+        unsubscribeSettings = window.studyFirebase.subscribeSettings(uid, (settings) => {
+          if (typeof settings.studyMode !== 'boolean') return;
+          lastFirebaseStudyMode = settings.studyMode;
+          if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            chrome.storage.local.set({ studyMode: settings.studyMode });
+          } else {
+            try { localStorage.setItem('studyMode', JSON.stringify(settings.studyMode)); } catch(e){}
+          }
+          console.log(`[Firebase Integration] studyMode synced: ${settings.studyMode}`);
+        }, (err) => {
+          console.error('[Firebase Integration] settings subscribe error', err);
+        });
 
-      // 起動時にローカルの studyMode を Firestore へ初期プッシュ
-      try {
+        // 起動時にローカルの studyMode を Firestore へ初期プッシュ
         if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
           chrome.storage.local.get(['studyMode'], (res) => {
             const mode = res?.studyMode ?? false;
@@ -104,7 +104,7 @@
               console.warn('[Firebase Integration] settings push error', e));
           });
         }
-      } catch(e) { console.warn('[Firebase Integration] settings init error', e); }
+      }
 
       // Initial push: read local tasks and upsert to Firestore (do not bulk-delete remote)
       try {
@@ -259,8 +259,8 @@
   function onStorageChange(changes, area) {
     if (area !== 'local') return;
 
-    // studyMode が変わったら Firestore に同期（Firebase からの更新は無視）
-    if (changes.studyMode && subscribedUid) {
+    // studyMode の変化 → Firestore に反映（Firebase からの更新は無視して無限ループ防止）
+    if (changes.studyMode && subscribedUid && window.studyFirebase && window.studyFirebase.upsertSettings) {
       const newMode = changes.studyMode.newValue;
       if (typeof newMode === 'boolean' && newMode !== lastFirebaseStudyMode) {
         lastFirebaseStudyMode = newMode;
@@ -350,7 +350,6 @@
 
   window.addEventListener('beforeunload', ()=>{
     if (typeof unsubscribe === 'function') try { unsubscribe(); } catch(e){}
-    if (typeof unsubscribeSettings === 'function') try { unsubscribeSettings(); } catch(e){}
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged && storageListener) {
       try { chrome.storage.onChanged.removeListener(storageListener); } catch(e){}
       storageListener = null;

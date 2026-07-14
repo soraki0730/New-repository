@@ -5,6 +5,14 @@ async function initPopup() {
   const count     = document.getElementById("progress-count");
   const banner    = document.getElementById("mode-banner");
 
+  const syncStudyModeUi = (isOn = false) => {
+    if (!toggle) return;
+    toggle.checked = Boolean(isOn);
+    if (banner) {
+      banner.classList.toggle("active", Boolean(isOn));
+    }
+  };
+
   // 今日のタスク進捗を表示
   const today = new Date().toISOString().slice(0, 10);
   const tasks = await loadTasks();
@@ -18,12 +26,24 @@ async function initPopup() {
 
   // スタディモード
   const studyOn = await loadStudyMode();
-  toggle.checked = studyOn;
-  if (studyOn) banner.classList.add("active");
+  syncStudyModeUi(studyOn);
 
   toggle.addEventListener("change", async () => {
     await saveStudyMode(toggle.checked);
-    banner.classList.toggle("active", toggle.checked);
+    syncStudyModeUi(toggle.checked);
+  });
+
+  if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.onChanged) {
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+      if (areaName !== "local" || !Object.prototype.hasOwnProperty.call(changes, "studyMode")) return;
+      loadStudyMode().then((value) => syncStudyModeUi(value));
+    });
+  }
+
+  window.addEventListener("storage", (event) => {
+    if (event.key === "studyMode") {
+      loadStudyMode().then((value) => syncStudyModeUi(value));
+    }
   });
 
   // 管理画面を開く

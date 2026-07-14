@@ -1,41 +1,126 @@
-import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  writeBatch
+} from 'firebase/firestore';
 import { db } from './firebaseClient.js';
 
-export function subscribeGroupMembers(groupId, onMembers, onError) {
-  if (!groupId) {
-    onMembers([]);
+const DEFAULT_GROUP_SETTINGS = {
+  shareLevel: 'progress',
+  unlockRule: 'approval',
+  emergencyUnlock: true,
+  notificationLevel: 'standard'
+};
+
+function normalizeText(value, fallback = '') {
+  return typeof value === 'string' && value.trim() ? value.trim() : fallback;
+}
+
+function normalizeNumber(value) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
+function buildMemberPayload(member, role) {
+  const uid = normalizeText(member?.uid);
+  if (!uid) throw new Error('uid is required');
+
+  return {
+    uid,
+    displayName: normalizeText(member?.displayName, 'Anonymous'),
+    role,
+    todayProgress: normalizeNumber(member?.todayProgress),
+    completedCount: normalizeNumber(member?.completedCount),
+    totalCount: normalizeNumber(member?.totalCount),
+    studying: Boolean(member?.studying),
+    lastActiveAt: serverTimestamp()
+  };
+}
+
+export async function createGroup(group = {}) {
+  const ownerUid = normalizeText(group.ownerUid || group.uid);
+  if (!ownerUid) throw new Error('ownerUid is required');
+
+  const groupRef = group.groupId
+    ? doc(db, 'groups', String(group.groupId))
+    : doc(collection(db, 'groups'));
+  const groupId = groupRef.id;
+  const batch = writeBatch(db);
+
+  batch.set(groupRef, {
+    name: normalizeText(group.name, 'New Study Group'),
+    type: normalizeText(group.type, 'focus'),
+    ownerUid,
+    createdAt: serverTimestamp(),
+    settings: {
+      ...DEFAULT_GROUP_SETTINGS,
+      ...(group.settings && typeof group.settings === 'object' ? group.settings : {})
+    }
+  });
+
+  batch.set(
+    doc(db, 'groups', groupId, 'members', ownerUid),
+    buildMemberPayload(
+      {
+        uid: ownerUid,
+        displayName: group.ownerName || group.displayName,
+        todayProgress: group.todayProgress,
+        completedCount: group.completedCount,
+        totalCount: group.totalCount,
+        studying: group.studying
+      },
+      'owner'
+    )
+  );
+
+  await batch.commit();
+  return { groupId };
+}
+
+export async function joinGroup(groupId, member = {}) {
+  const normalizedGroupId = normalizeText(groupId);
+  if (!normalizedGroupId) throw new Error('groupId is required');
+
+  const payload = buildMemberPayload(member, 'member');
+  await writeBatch(db)
+    .set(doc(db, 'groups', normalizedGroupId, 'members', payload.uid), payload, { merge: true })
+    .commit();
+
+  return { groupId: normalizedGroupId, uid: payload.uid };
+}
+
+export function subscribeGroupMembers(groupId, onChange, onError) {
+  const normalizedGroupId = normalizeText(groupId);
+  if (!normalizedGroupId) {
+    onChange([]);
     return () => {};
   }
 
-  const usersCollection = collection(db, 'users');
-  const q = query(
-    usersCollection,
-    where('groupId', '==', groupId),
-    orderBy('updatedAt', 'desc')
+  const membersQuery = query(
+    collection(db, 'groups', normalizedGroupId, 'members'),
+    orderBy('lastActiveAt', 'desc')
   );
 
   return onSnapshot(
-    q,
+    membersQuery,
     (snapshot) => {
       const members = snapshot.docs.map((docSnapshot) => {
         const data = docSnapshot.data();
-        const todayProgress = typeof data?.todayProgress === 'number' ? data.todayProgress : 0;
-        const completedCount = typeof data?.completedCount === 'number' ? data.completedCount : 0;
-        const totalCount = typeof data?.totalCount === 'number' ? data.totalCount : 0;
-        const rawUpdatedAt = data?.updatedAt;
-        const lastActiveAt = data?.lastActiveAt;
         return {
-          uid: docSnapshot.id,
-          displayName: data?.displayName || '名前未設定',
-          groupId: data?.groupId || '',
-          todayProgress,
-          completedCount,
-          totalCount,
-          lastActiveAt: rawUpdatedAt || lastActiveAt || null,
-          updatedAt: rawUpdatedAt || null,
+          uid: data?.uid || docSnapshot.id,
+          displayName: data?.displayName || 'Anonymous',
+          role: data?.role || 'member',
+          todayProgress: normalizeNumber(data?.todayProgress),
+          completedCount: normalizeNumber(data?.completedCount),
+          totalCount: normalizeNumber(data?.totalCount),
+          studying: Boolean(data?.studying),
+          lastActiveAt: data?.lastActiveAt || null
         };
       });
-      onMembers(members);
+      onChange(members);
     },
     onError
   );

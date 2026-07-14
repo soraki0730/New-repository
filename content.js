@@ -2,14 +2,15 @@
 
 let BLOCK_URLS = [];
 
-// ブロック対象URLを動的に読み込む
-function loadBlockedUrls() {
+// ブロック対象URLを動的に読み込む（callback: 読み込み完了後に実行）
+function loadBlockedUrls(callback) {
   if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
     chrome.storage.local.get(["blockedSites"], (result) => {
       BLOCK_URLS = result?.blockedSites ?? [
         "https://www.youtube.com/",
         "chrome://extensions/",
       ];
+      if (callback) callback();
     });
   } else {
     const data = localStorage.getItem("blockedSites");
@@ -17,11 +18,9 @@ function loadBlockedUrls() {
       "https://www.youtube.com/",
       "chrome://extensions/",
     ];
+    if (callback) callback();
   }
 }
-
-// 初期読み込み
-loadBlockedUrls();
 
 function shouldBlockUrl(url, taskState) {
   if (!taskState?.studyMode || !taskState?.hasPendingTasks) return false;
@@ -53,22 +52,25 @@ function loadStateAndHandle() {
   });
 }
 
-loadStateAndHandle();
+// BLOCK_URLS を読み込んでから判定（レースコンディション防止）
+loadBlockedUrls(() => {
+  loadStateAndHandle();
 
-chrome.runtime.sendMessage({ type: "GET_TASK_STATE" }, (taskState) => {
-  if (chrome.runtime.lastError) {
-    console.warn("[content] runtime sendMessage failed", chrome.runtime.lastError);
-    return;
-  }
-  handleTaskState(taskState || {});
+  chrome.runtime.sendMessage({ type: "GET_TASK_STATE" }, (taskState) => {
+    if (chrome.runtime.lastError) {
+      console.warn("[content] runtime sendMessage failed", chrome.runtime.lastError);
+      return;
+    }
+    handleTaskState(taskState || {});
+  });
 });
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName !== "local") return;
   
-  // blockedSites が変更されたら再読み込み
+  // blockedSites が変更されたら再読み込み → 読み込み完了後に現在ページを再チェック
   if (changes.blockedSites) {
-    loadBlockedUrls();
+    loadBlockedUrls(() => loadStateAndHandle());
   }
   
   // tasks か studyMode が変更されたら状態を再チェック
