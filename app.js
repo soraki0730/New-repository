@@ -1437,9 +1437,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await initializeGroupSharing();
   await syncTodayProgressToFirebase();
+});
 
-  // BOT管理
-  await renderBotList();
+// ========== BOT管理 ==========
+// イベント登録を独立したハンドラで行う（async連鎖のエラーに巻き込まれないよう分離）
+document.addEventListener('DOMContentLoaded', () => {
+  renderBotList();
   document.getElementById('bot-add-btn')?.addEventListener('click', addBot);
   document.getElementById('bot-edit-cancel')?.addEventListener('click', closeBotEditModal);
   document.getElementById('bot-edit-modal')?.addEventListener('click', (e) => {
@@ -1453,7 +1456,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 });
 
-// ========== BOT管理 ==========
 const BOT_IDS_KEY = 'testBotIds';
 let _botCache = {};
 let _editingBotId = null;
