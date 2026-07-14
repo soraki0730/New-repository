@@ -2,6 +2,12 @@ import { ensureAnonymousUser } from './authService.js';
 import { upsertTask, subscribeTasks, deleteTask, upsertSettings, subscribeSettings } from './taskRepository.js';
 import { upsertUserProfile, updateTodayProgress } from './profileRepository.js';
 import { subscribeGroupMembers } from './groupRepository.js';
+import {
+  approveUnlockRequest,
+  createEmergencyUnlockHistory,
+  createUnlockRequest,
+  subscribeUnlockRequests
+} from './unlockRepository.js';
 
 const uidEl = document.getElementById('uid');
 const statusEl = document.getElementById('status');
@@ -17,7 +23,7 @@ function setStatus(text) {
 function setError(err) {
   const message = err && err.message ? err.message : String(err);
   if (errorEl) errorEl.textContent = message;
-  console.error(message, err);
+  console.warn(message, err);
 }
 
 function renderTasks(tasks) {
@@ -40,6 +46,10 @@ window.studyFirebase = {
   upsertUserProfile,
   updateTodayProgress,
   subscribeGroupMembers,
+  createUnlockRequest,
+  subscribeUnlockRequests,
+  approveUnlockRequest,
+  createEmergencyUnlockHistory,
 };
 
 console.log('[Firebase] Firebase bundle loaded');

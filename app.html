@@ -92,6 +92,14 @@
           <div id="group-progress-list" class="group-progress-list"></div>
         </div>
 
+        <div class="section unlock-section">
+          <h3 class="section__head">解除申請</h3>
+          <div id="unlock-request-empty" class="unlock-request-empty">
+            解除申請はありません
+          </div>
+          <div id="unlock-request-list" class="unlock-request-list"></div>
+        </div>
+
         <div class="section">
           <h3 class="section__head">
             今日のタスク
@@ -188,6 +196,7 @@
               <span class="toggle__track"></span>
             </label>
           </div>
+          <div id="unlock-status-card" class="unlock-status-card" hidden></div>
         </div>
 
         <div class="settings-section">
@@ -203,6 +212,40 @@
               追加
             </button>
           </div>
+        </div>
+      </div>
+
+      <!-- ===== スタディモード解除申請モーダル ===== -->
+      <div
+        class="modal-overlay"
+        id="unlock-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="スタディモード解除申請"
+      >
+        <div class="modal-sheet unlock-modal-sheet">
+          <div class="modal-sheet__head">
+            <button class="modal-sheet__cancel" id="unlock-modal-cancel" type="button">
+              キャンセル
+            </button>
+            <h2 class="modal-sheet__title">解除理由</h2>
+            <div style="width: 70px"></div>
+          </div>
+
+          <div class="modal-field">
+            <label for="unlock-reason-input">理由を入力してください</label>
+            <textarea
+              id="unlock-reason-input"
+              rows="5"
+              placeholder="例）授業で必要な資料を確認するため"
+            ></textarea>
+          </div>
+
+          <p id="unlock-modal-error" class="unlock-modal-error" hidden></p>
+          <button class="modal-submit" id="unlock-request-submit" type="button">解除申請</button>
+          <button class="unlock-emergency-btn" id="unlock-emergency-submit" type="button">
+            緊急解除
+          </button>
         </div>
       </div>
 

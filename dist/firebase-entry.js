@@ -28238,6 +28238,99 @@ This typically indicates that your device does not have a healthy Internet conne
     );
   }
 
+  // src/unlockRepository.js
+  function normalizeUnlockPayload(groupIdOrPayload, maybePayload) {
+    if (typeof groupIdOrPayload === "string") {
+      return { ...(maybePayload || {}), groupId: groupIdOrPayload };
+    }
+    return { ...(groupIdOrPayload || {}) };
+  }
+  function normalizeUnlockCreatedAt(value) {
+    if (!value) return Date.now();
+    return typeof value.toMillis === "function" ? value.toMillis() : value;
+  }
+  function unlockRequestCollection(groupId) {
+    return collection(db, "groups", groupId || "demo-group", "unlockRequests");
+  }
+  function emergencyUnlockCollection(groupId) {
+    return collection(db, "groups", groupId || "demo-group", "emergencyUnlockHistory");
+  }
+  function normalizeUnlockRequest(docSnapshot) {
+    const data = docSnapshot.data() || {};
+    return {
+      id: docSnapshot.id,
+      type: data.type || "unlock-request",
+      status: data.status || "pending",
+      uid: data.uid || "",
+      displayName: data.displayName || "\u540D\u524D\u672A\u8A2D\u5B9A",
+      groupId: data.groupId || "",
+      reason: data.reason || "",
+      createdAt: normalizeUnlockCreatedAt(data.createdAt),
+      updatedAt: normalizeUnlockCreatedAt(data.updatedAt),
+      approvedAt: normalizeUnlockCreatedAt(data.approvedAt),
+      source: "firestore"
+    };
+  }
+  async function createUnlockRequest(groupIdOrPayload, maybePayload) {
+    const payload = normalizeUnlockPayload(groupIdOrPayload, maybePayload);
+    const ref = payload.id ? doc(unlockRequestCollection(payload.groupId), String(payload.id)) : doc(unlockRequestCollection(payload.groupId));
+    const data = {
+      type: "unlock-request",
+      status: "pending",
+      uid: payload.uid || "",
+      displayName: payload.displayName || "\u540D\u524D\u672A\u8A2D\u5B9A",
+      groupId: payload.groupId || "",
+      reason: payload.reason || "",
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+    await setDoc(ref, data, { merge: true });
+    return { id: ref.id, ...payload, status: "pending", source: "firestore" };
+  }
+  function subscribeUnlockRequests(groupId, onRequests, onError) {
+    if (!groupId) {
+      onRequests([]);
+      return () => {
+      };
+    }
+    const requestsQuery = query(unlockRequestCollection(groupId), orderBy("createdAt", "desc"));
+    return onSnapshot(
+      requestsQuery,
+      (snapshot) => {
+        onRequests(snapshot.docs.map(normalizeUnlockRequest));
+      },
+      onError
+    );
+  }
+  async function approveUnlockRequest(groupIdOrPayload, maybeRequestId) {
+    const payload = normalizeUnlockPayload(groupIdOrPayload, {});
+    const requestId = maybeRequestId || payload.requestId || payload.id;
+    if (!requestId) return null;
+    const ref = doc(unlockRequestCollection(payload.groupId), String(requestId));
+    await setDoc(ref, {
+      status: "approved",
+      approvedAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+    return { id: String(requestId), status: "approved" };
+  }
+  async function createEmergencyUnlockHistory(groupIdOrPayload, maybePayload) {
+    const payload = normalizeUnlockPayload(groupIdOrPayload, maybePayload);
+    const ref = payload.id ? doc(emergencyUnlockCollection(payload.groupId), String(payload.id)) : doc(emergencyUnlockCollection(payload.groupId));
+    const data = {
+      type: "emergency-unlock",
+      status: "emergency",
+      uid: payload.uid || "",
+      displayName: payload.displayName || "\u540D\u524D\u672A\u8A2D\u5B9A",
+      groupId: payload.groupId || "",
+      reason: payload.reason || "",
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+    await setDoc(ref, data, { merge: true });
+    return { id: ref.id, ...payload, status: "emergency", source: "firestore" };
+  }
+
   // src/firebase-entry.js
   var uidEl = document.getElementById("uid");
   var statusEl = document.getElementById("status");
@@ -28251,7 +28344,7 @@ This typically indicates that your device does not have a healthy Internet conne
   function setError(err) {
     const message = err && err.message ? err.message : String(err);
     if (errorEl) errorEl.textContent = message;
-    console.error(message, err);
+    console.warn(message, err);
   }
   function renderTasks(tasks) {
     if (!tasksList) return;
@@ -28271,7 +28364,11 @@ This typically indicates that your device does not have a healthy Internet conne
     subscribeSettings,
     upsertUserProfile,
     updateTodayProgress,
-    subscribeGroupMembers
+    subscribeGroupMembers,
+    createUnlockRequest,
+    subscribeUnlockRequests,
+    approveUnlockRequest,
+    createEmergencyUnlockHistory
   };
   console.log("[Firebase] Firebase bundle loaded");
   async function init() {
