@@ -14,38 +14,22 @@
   </head>
   <body>
     <div class="app-frame">
-      <div id="firebase-sync-status" class="firebase-status connecting">Firebase接続中…</div>
-      <div class="firebase-backup-card">
+      <div id="firebase-sync-status" class="firebase-status connecting" hidden>Firebase接続中…</div>
+      <div class="firebase-backup-card" hidden>
         <span id="firebase-backup-count">クラウド保存：確認中</span>
         <button id="firebase-restore-button" type="button">クラウドから復元</button>
       </div>
       <!-- ===== VIEW: ホーム ===== -->
       <div class="view view--home active" id="view-home">
         <header class="app-header">
-          <div class="user-row">
-            <div class="user-slot">
-              <div class="user-avatar user-avatar--me">自</div>
-              <span class="user-name">自分</span>
+          <div class="user-row" id="home-user-row">
+            <div class="user-slot user-slot--me" id="home-self-slot">
+              <div class="user-avatar user-avatar--me" id="home-self-avatar">自</div>
+              <span class="user-name" id="home-self-name">自分</span>
             </div>
-            <div class="user-slot">
-              <div class="user-avatar">R</div>
-              <span class="user-name">Riku</span>
-            </div>
-            <div class="user-slot">
-              <div class="user-avatar">S</div>
-              <span class="user-name">Saki</span>
-            </div>
-            <div class="user-slot">
-              <div class="user-avatar">Y</div>
-              <span class="user-name">Yuto</span>
-            </div>
-            <div class="user-slot">
-              <div
-                class="user-avatar user-avatar--add"
-                aria-label="メンバーを追加"
-              >
-                ＋
-              </div>
+            <!-- メンバースロットはapp.jsのrenderHomeUserRow()が動的に追加 -->
+            <div class="user-slot user-slot--add">
+              <div class="user-avatar user-avatar--add" aria-label="メンバーを追加">＋</div>
               <span class="user-name">追加</span>
             </div>
           </div>
@@ -62,25 +46,6 @@
           </div>
           <div class="achievement__circle" id="achievement-circle">
             <span class="achievement__pct" id="achievement-pct">0%</span>
-          </div>
-        </div>
-
-        <div class="section profile-section">
-          <h3 class="section__head">プロフィール</h3>
-          <div class="profile-card">
-            <div class="profile-field">
-              <label for="profile-display-name">表示名</label>
-              <input id="profile-display-name" type="text" placeholder="例）佐藤" autocomplete="off" />
-            </div>
-            <div class="profile-field">
-              <label for="profile-group-id">グループID</label>
-              <input id="profile-group-id" type="text" placeholder="例）study-2024" autocomplete="off" />
-            </div>
-            <button class="profile-save-btn" id="profile-save-btn" type="button">保存する</button>
-            <div class="profile-summary">
-              <p>現在の表示名: <span id="profile-current-name">-</span></p>
-              <p>参加中のグループ: <span id="profile-current-group">未参加</span></p>
-            </div>
           </div>
         </div>
 
@@ -172,6 +137,25 @@
       <div class="view view--settings" id="view-settings">
         <div class="settings-header">
           <h2>設定</h2>
+        </div>
+
+        <div class="settings-section">
+          <p class="settings-section__title">プロフィール</p>
+          <div class="profile-card">
+            <div class="profile-field">
+              <label for="profile-display-name">表示名</label>
+              <input id="profile-display-name" type="text" placeholder="例）佐藤" autocomplete="off" />
+            </div>
+            <div class="profile-field">
+              <label for="profile-group-id">グループID</label>
+              <input id="profile-group-id" type="text" placeholder="例）study-2024" autocomplete="off" />
+            </div>
+            <button class="profile-save-btn" id="profile-save-btn" type="button">保存する</button>
+            <div class="profile-summary">
+              <p>現在の表示名: <span id="profile-current-name">-</span></p>
+              <p>参加中のグループ: <span id="profile-current-group">未参加</span></p>
+            </div>
+          </div>
         </div>
 
         <div class="settings-section">
@@ -479,6 +463,9 @@
           </button>
         </li>
       </template>
+
+      <!-- ===== メンバー進捗ポップアップ ===== -->
+      <div id="member-popup" class="member-popup" hidden></div>
 
       <!-- ===== ボトムナビ ===== -->
       <nav class="bottom-nav" aria-label="メインナビゲーション">

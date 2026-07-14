@@ -196,6 +196,13 @@ function setProfileFormValues(profile = {}) {
 }
 
 function renderProfileSummary() {
+  // ホーム上部の自分スロットも更新
+  const selfAvatar = document.getElementById('home-self-avatar');
+  const selfName   = document.getElementById('home-self-name');
+  const initial = (currentProfile.displayName || '自')[0];
+  if (selfAvatar) selfAvatar.textContent = initial;
+  if (selfName)   selfName.textContent   = currentProfile.displayName || '自分';
+
   const nameEl = document.getElementById('profile-current-name');
   const groupEl = document.getElementById('profile-current-group');
   if (nameEl) {
@@ -206,7 +213,67 @@ function renderProfileSummary() {
   }
 }
 
+function renderHomeUserRow(members = []) {
+  const row = document.getElementById('home-user-row');
+  if (!row) return;
+
+  // 自分スロットを実名で更新
+  const selfAvatar = document.getElementById('home-self-avatar');
+  const selfName   = document.getElementById('home-self-name');
+  const initial = (currentProfile.displayName || '自')[0];
+  if (selfAvatar) selfAvatar.textContent = initial;
+  if (selfName)   selfName.textContent   = currentProfile.displayName || '自分';
+
+  // 既存のメンバースロットを削除
+  row.querySelectorAll('.user-slot--member').forEach((el) => el.remove());
+
+  const addSlot = row.querySelector('.user-slot--add');
+  members
+    .filter((m) => m.uid !== currentUid)
+    .forEach((member) => {
+      const slot = document.createElement('div');
+      slot.className = 'user-slot user-slot--member';
+      slot.innerHTML = `
+        <div class="user-avatar">${(member.displayName || '?')[0]}</div>
+        <span class="user-name">${member.displayName || '?'}</span>
+      `;
+      slot.addEventListener('click', () => showMemberPopup(member));
+      if (addSlot) row.insertBefore(slot, addSlot);
+      else row.appendChild(slot);
+    });
+}
+
+function showMemberPopup(member) {
+  const popup = document.getElementById('member-popup');
+  if (!popup) return;
+
+  const pct    = member.todayProgress || 0;
+  const done   = member.completedCount || 0;
+  const total  = member.totalCount || 0;
+  const status = pct >= 100 ? '完了 🎉' : pct > 0 ? '学習中' : '未着手';
+  const color  = pct >= 100 ? '#4caf50' : pct > 0 ? '#2196f3' : '#9e9e9e';
+
+  popup.innerHTML = `
+    <div class="member-popup__backdrop"></div>
+    <div class="member-popup__card">
+      <button class="member-popup__close" id="member-popup-close" type="button">✕</button>
+      <div class="member-popup__avatar">${(member.displayName || '?')[0]}</div>
+      <div class="member-popup__name">${member.displayName || '名前未設定'}</div>
+      <div class="member-popup__status" style="color:${color}">${status}</div>
+      <div class="member-popup__pct" style="color:${color}">${pct}%</div>
+      <div class="member-popup__tasks">${done} / ${total} タスク完了</div>
+    </div>
+  `;
+  popup.hidden = false;
+
+  const close = () => { popup.hidden = true; };
+  popup.querySelector('#member-popup-close').addEventListener('click', close);
+  popup.querySelector('.member-popup__backdrop').addEventListener('click', close);
+}
+
 function renderGroupMembers(members = []) {
+  renderHomeUserRow(members);
+
   const list = document.getElementById('group-progress-list');
   const empty = document.getElementById('group-progress-empty');
   if (!list || !empty) return;

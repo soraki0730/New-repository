@@ -172,6 +172,90 @@ body {
   color: rgba(255, 255, 255, 0.85);
 }
 
+.user-slot--member {
+  cursor: pointer;
+}
+.user-slot--member:active .user-avatar {
+  opacity: 0.7;
+}
+
+/* メンバー進捗ポップアップ */
+.member-popup {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.member-popup[hidden] { display: none; }
+
+.member-popup__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+}
+
+.member-popup__card {
+  position: relative;
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 28px 24px 24px;
+  min-width: 220px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+
+.member-popup__close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  padding: 4px;
+}
+
+.member-popup__avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #b2dfdb;
+  color: var(--primary-dark);
+  font-size: 24px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px;
+}
+
+.member-popup__name {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+
+.member-popup__status {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.member-popup__pct {
+  font-size: 32px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.member-popup__tasks {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
 .bell-btn {
   background: none;
   border: none;
