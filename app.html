@@ -152,6 +152,12 @@
           </div>
         </div>
 
+        <div class="settings-section" id="bot-section">
+          <p class="settings-section__title">🤖 テストBOT</p>
+          <div id="bot-list" class="bot-list"></div>
+          <button class="bot-add-btn" id="bot-add-btn" type="button">＋ BOTを追加</button>
+        </div>
+
         <div class="settings-section">
           <p class="settings-section__title">学習モード</p>
           <div class="settings-row">
@@ -457,6 +463,53 @@
           </button>
         </li>
       </template>
+
+      <!-- ===== BOT編集モーダル ===== -->
+      <div class="modal-overlay" id="bot-edit-modal" hidden role="dialog" aria-modal="true" aria-label="BOT編集">
+        <div class="modal-sheet bot-modal-sheet">
+          <h3 class="modal-title">BOT編集</h3>
+
+          <div class="modal-field">
+            <label for="bot-name-input">名前</label>
+            <input id="bot-name-input" type="text" placeholder="例）田中" autocomplete="off" />
+          </div>
+
+          <div class="modal-field">
+            <label>達成率：<span id="bot-progress-display">0</span>%</label>
+            <input id="bot-progress-input" type="range" min="0" max="100" step="5" value="0" class="bot-range" />
+          </div>
+
+          <div class="modal-field">
+            <label>タスク数（完了 / 総数）</label>
+            <div class="bot-task-row">
+              <input id="bot-completed-input" type="number" min="0" max="20" value="0" class="bot-num-input" />
+              <span class="bot-slash">/</span>
+              <input id="bot-total-input" type="number" min="0" max="20" value="3" class="bot-num-input" />
+            </div>
+          </div>
+
+          <div class="modal-field">
+            <div class="bot-toggle-row">
+              <span>スタディモード（学習中）</span>
+              <label class="toggle" aria-label="スタディモード">
+                <input type="checkbox" id="bot-studying-toggle" />
+                <span class="toggle__track"></span>
+              </label>
+            </div>
+          </div>
+
+          <div class="modal-field">
+            <label>解除申請を作成</label>
+            <textarea id="bot-unlock-reason" class="bot-textarea" placeholder="例）課題でYouTubeを見る必要があります"></textarea>
+            <button class="bot-unlock-send-btn" id="bot-unlock-send-btn" type="button">申請を送信する</button>
+          </div>
+
+          <div class="bot-modal-actions">
+            <button class="modal-cancel-btn" id="bot-edit-cancel" type="button">キャンセル</button>
+            <button class="modal-submit" id="bot-edit-save" type="button">保存</button>
+          </div>
+        </div>
+      </div>
 
       <!-- ===== メンバー進捗ポップアップ ===== -->
       <div id="member-popup" class="member-popup" hidden></div>

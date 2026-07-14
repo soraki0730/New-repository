@@ -28368,6 +28368,13 @@ This typically indicates that your device does not have a healthy Internet conne
     await writeBatch(db).set(doc(db, "groups", normalizedGroupId, "members", payload.uid), payload, { merge: true }).commit();
     return { groupId: normalizedGroupId, uid: payload.uid };
   }
+  async function deleteGroupMember(groupId, uid) {
+    const normalizedGroupId = normalizeText(groupId);
+    const normalizedUid = normalizeText(uid);
+    if (!normalizedGroupId || !normalizedUid) throw new Error("groupId and uid are required");
+    await deleteDoc(doc(db, "groups", normalizedGroupId, "members", normalizedUid));
+    return { groupId: normalizedGroupId, uid: normalizedUid };
+  }
   function subscribeGroupMembers(groupId, onChange, onError) {
     const normalizedGroupId = normalizeText(groupId);
     if (!normalizedGroupId) {
@@ -28556,7 +28563,8 @@ This typically indicates that your device does not have a healthy Internet conne
     createUnlockRequest: createUnlockRequest2,
     subscribeUnlockRequests,
     approveUnlockRequest: approveUnlockRequest2,
-    createEmergencyUnlockHistory: createEmergencyUnlockHistory2
+    createEmergencyUnlockHistory: createEmergencyUnlockHistory2,
+    deleteGroupMember
   };
   console.log("[Firebase] Firebase bundle loaded");
   async function init() {

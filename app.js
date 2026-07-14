@@ -1437,4 +1437,164 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await initializeGroupSharing();
   await syncTodayProgressToFirebase();
+
+  // BOT管理
+  await renderBotList();
+  document.getElementById('bot-add-btn')?.addEventListener('click', addBot);
+  document.getElementById('bot-edit-cancel')?.addEventListener('click', closeBotEditModal);
+  document.getElementById('bot-edit-modal')?.addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeBotEditModal();
+  });
+  document.getElementById('bot-edit-save')?.addEventListener('click', saveBotEdit);
+  document.getElementById('bot-unlock-send-btn')?.addEventListener('click', sendBotUnlockRequest);
+  document.getElementById('bot-progress-input')?.addEventListener('input', (e) => {
+    const el = document.getElementById('bot-progress-display');
+    if (el) el.textContent = e.target.value;
+  });
 });
+
+// ========== BOT管理 ==========
+const BOT_IDS_KEY = 'testBotIds';
+let _botCache = {};
+let _editingBotId = null;
+
+async function loadBotIds() {
+  return new Promise((resolve) => {
+    if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+      chrome.storage.local.get([BOT_IDS_KEY], (res) => resolve(res?.[BOT_IDS_KEY] || []));
+    } else {
+      try { resolve(JSON.parse(localStorage.getItem(BOT_IDS_KEY) || '[]')); } catch { resolve([]); }
+    }
+  });
+}
+
+async function saveBotIds(ids) {
+  return new Promise((resolve) => {
+    if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+      chrome.storage.local.set({ [BOT_IDS_KEY]: ids }, resolve);
+    } else {
+      localStorage.setItem(BOT_IDS_KEY, JSON.stringify(ids));
+      resolve();
+    }
+  });
+}
+
+async function renderBotList() {
+  const list = document.getElementById('bot-list');
+  if (!list) return;
+  const ids = await loadBotIds();
+  if (ids.length === 0) {
+    list.innerHTML = '<p class="bot-empty">BOTはまだいません</p>';
+    return;
+  }
+  list.innerHTML = '';
+  ids.forEach((botId) => {
+    const d = _botCache[botId] || { displayName: botId };
+    const item = document.createElement('div');
+    item.className = 'bot-item';
+    item.innerHTML = `
+      <div class="bot-item__info">
+        <span class="bot-item__name">🤖 ${d.displayName || 'BOT'}</span>
+        <span class="bot-item__meta">${d.todayProgress || 0}% · ${d.completedCount || 0}/${d.totalCount || 0}タスク · ${d.studying ? '学習中' : '未着手'}</span>
+      </div>
+      <div class="bot-item__actions">
+        <button class="bot-btn bot-btn--edit" data-id="${botId}" type="button">編集</button>
+        <button class="bot-btn bot-btn--delete" data-id="${botId}" type="button">削除</button>
+      </div>
+    `;
+    list.appendChild(item);
+  });
+  list.querySelectorAll('.bot-btn--edit').forEach((btn) =>
+    btn.addEventListener('click', () => openBotEditModal(btn.dataset.id))
+  );
+  list.querySelectorAll('.bot-btn--delete').forEach((btn) =>
+    btn.addEventListener('click', () => deleteBot(btn.dataset.id))
+  );
+}
+
+async function addBot() {
+  const groupId = currentProfile.groupId || activeGroupId;
+  if (!groupId) { alert('先にグループIDを設定してください'); return; }
+  const botId = 'bot-' + Date.now();
+  const defaults = { displayName: 'BOT', todayProgress: 0, completedCount: 0, totalCount: 3, studying: false };
+  _botCache[botId] = defaults;
+  const firebaseApi = await ensureFirebaseAvailable();
+  if (firebaseApi?.joinGroup) await firebaseApi.joinGroup(groupId, { uid: botId, ...defaults });
+  const ids = await loadBotIds();
+  ids.push(botId);
+  await saveBotIds(ids);
+  await renderBotList();
+  openBotEditModal(botId);
+}
+
+function openBotEditModal(botId) {
+  _editingBotId = botId;
+  const d = _botCache[botId] || {};
+  document.getElementById('bot-name-input').value = d.displayName || '';
+  const prog = document.getElementById('bot-progress-input');
+  if (prog) { prog.value = d.todayProgress || 0; }
+  const disp = document.getElementById('bot-progress-display');
+  if (disp) disp.textContent = d.todayProgress || 0;
+  document.getElementById('bot-completed-input').value = d.completedCount || 0;
+  document.getElementById('bot-total-input').value = d.totalCount || 3;
+  document.getElementById('bot-studying-toggle').checked = d.studying || false;
+  document.getElementById('bot-unlock-reason').value = '';
+  document.getElementById('bot-edit-modal').hidden = false;
+}
+
+function closeBotEditModal() {
+  document.getElementById('bot-edit-modal').hidden = true;
+  _editingBotId = null;
+}
+
+async function saveBotEdit() {
+  if (!_editingBotId) return;
+  const groupId = currentProfile.groupId || activeGroupId;
+  if (!groupId) { alert('グループIDが設定されていません'); return; }
+  const data = {
+    displayName:    (document.getElementById('bot-name-input').value.trim()) || 'BOT',
+    todayProgress:  Number(document.getElementById('bot-progress-input').value) || 0,
+    completedCount: Number(document.getElementById('bot-completed-input').value) || 0,
+    totalCount:     Number(document.getElementById('bot-total-input').value) || 3,
+    studying:       document.getElementById('bot-studying-toggle').checked,
+  };
+  _botCache[_editingBotId] = data;
+  const firebaseApi = await ensureFirebaseAvailable();
+  if (firebaseApi?.joinGroup) await firebaseApi.joinGroup(groupId, { uid: _editingBotId, ...data });
+  closeBotEditModal();
+  await renderBotList();
+}
+
+async function deleteBot(botId) {
+  if (!confirm('このBOTを削除しますか？')) return;
+  const groupId = currentProfile.groupId || activeGroupId;
+  const firebaseApi = await ensureFirebaseAvailable();
+  if (groupId && firebaseApi?.deleteGroupMember) {
+    try { await firebaseApi.deleteGroupMember(groupId, botId); } catch (e) { console.warn('[BOT] delete failed', e); }
+  }
+  delete _botCache[botId];
+  const ids = (await loadBotIds()).filter((id) => id !== botId);
+  await saveBotIds(ids);
+  await renderBotList();
+}
+
+async function sendBotUnlockRequest() {
+  if (!_editingBotId) return;
+  const groupId = currentProfile.groupId || activeGroupId;
+  const reason = document.getElementById('bot-unlock-reason').value.trim();
+  if (!reason) { alert('理由を入力してください'); return; }
+  if (!groupId) { alert('グループIDが設定されていません'); return; }
+  const d = _botCache[_editingBotId] || {};
+  const firebaseApi = await ensureFirebaseAvailable();
+  if (firebaseApi?.createUnlockRequest) {
+    await firebaseApi.createUnlockRequest(groupId, {
+      uid: _editingBotId,
+      requesterUid: _editingBotId,
+      requesterName: d.displayName || 'BOT',
+      displayName: d.displayName || 'BOT',
+      reason,
+    });
+    alert(`${d.displayName || 'BOT'}の解除申請を送信しました`);
+    document.getElementById('bot-unlock-reason').value = '';
+  }
+}

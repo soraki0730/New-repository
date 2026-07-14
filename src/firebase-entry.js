@@ -3,6 +3,7 @@ import { upsertTask, subscribeTasks, deleteTask } from './taskRepository.js';
 import { upsertUserProfile, updateTodayProgress } from './profileRepository.js';
 import {
   createGroup as createGroupRecord,
+  deleteGroupMember,
   joinGroup as joinGroupRecord,
   subscribeGroupMembers
 } from './groupRepository.js';
@@ -94,7 +95,8 @@ window.studyFirebase = {
   createUnlockRequest,
   subscribeUnlockRequests,
   approveUnlockRequest,
-  createEmergencyUnlockHistory
+  createEmergencyUnlockHistory,
+  deleteGroupMember
 };
 
 console.log('[Firebase] Firebase bundle loaded');

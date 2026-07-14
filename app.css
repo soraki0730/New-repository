@@ -1975,6 +1975,115 @@ body {
   transform: scale(1.2);
 }
 
+/* ===== BOT管理 ===== */
+.bot-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+
+.bot-empty { font-size: 13px; color: var(--ink-soft); text-align: center; padding: 8px 0; margin: 0; }
+
+.bot-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(0,0,0,0.07);
+}
+
+.bot-item__info { display: flex; flex-direction: column; gap: 2px; }
+.bot-item__name { font-size: 14px; font-weight: 600; color: var(--ink); }
+.bot-item__meta { font-size: 12px; color: var(--ink-soft); }
+
+.bot-item__actions { display: flex; gap: 6px; }
+
+.bot-btn {
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.bot-btn--edit  { background: #e3f2fd; color: #1565c0; }
+.bot-btn--delete { background: #fce4ec; color: #c62828; }
+
+.bot-add-btn {
+  width: 100%;
+  padding: 10px;
+  border: 2px dashed rgba(0,0,0,0.15);
+  border-radius: 10px;
+  background: transparent;
+  font-size: 14px;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.bot-add-btn:active { background: rgba(0,0,0,0.04); }
+
+.bot-modal-sheet {
+  background: var(--surface);
+  border-radius: 16px 16px 0 0;
+  padding: 20px 16px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.bot-range { width: 100%; accent-color: var(--primary); margin-top: 6px; }
+
+.bot-task-row { display: flex; align-items: center; gap: 8px; }
+.bot-num-input {
+  width: 60px;
+  padding: 8px;
+  border: 1px solid rgba(0,0,0,0.15);
+  border-radius: 8px;
+  font-size: 15px;
+  text-align: center;
+}
+.bot-slash { font-size: 18px; color: var(--ink-soft); }
+
+.bot-toggle-row { display: flex; align-items: center; justify-content: space-between; }
+
+.bot-textarea {
+  width: 100%;
+  min-height: 64px;
+  padding: 10px;
+  border: 1px solid rgba(0,0,0,0.15);
+  border-radius: 8px;
+  font-size: 14px;
+  resize: vertical;
+  box-sizing: border-box;
+  margin-bottom: 8px;
+}
+
+.bot-unlock-send-btn {
+  width: 100%;
+  padding: 10px;
+  background: #ff9800;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bot-modal-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.modal-cancel-btn {
+  flex: 1;
+  padding: 12px;
+  background: rgba(0,0,0,0.06);
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  cursor: pointer;
+}
+
 /* ===== 解除申請カード（グループタブ） ===== */
 .gr-badge {
   display: inline-flex;

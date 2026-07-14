@@ -1,5 +1,6 @@
 import {
   collection,
+  deleteDoc,
   doc,
   onSnapshot,
   orderBy,
@@ -90,6 +91,14 @@ export async function joinGroup(groupId, member = {}) {
     .commit();
 
   return { groupId: normalizedGroupId, uid: payload.uid };
+}
+
+export async function deleteGroupMember(groupId, uid) {
+  const normalizedGroupId = normalizeText(groupId);
+  const normalizedUid = normalizeText(uid);
+  if (!normalizedGroupId || !normalizedUid) throw new Error('groupId and uid are required');
+  await deleteDoc(doc(db, 'groups', normalizedGroupId, 'members', normalizedUid));
+  return { groupId: normalizedGroupId, uid: normalizedUid };
 }
 
 export function subscribeGroupMembers(groupId, onChange, onError) {
