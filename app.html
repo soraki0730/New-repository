@@ -298,6 +298,13 @@
           <div class="section-label">メンバー</div>
           <div id="group-member-list" class="group-member-list"></div>
 
+          <!-- 解除申請（group-room-ui.js が描画） -->
+          <div class="section-label" style="margin-top:20px">
+            🔓 解除申請
+            <span id="gr-unlock-badge" class="gr-badge" hidden></span>
+          </div>
+          <div id="gr-unlock-list" class="gr-unlock-list"></div>
+
           <div class="section-label" style="margin-top:20px">アクティビティ</div>
           <div id="group-activity-feed" class="activity-feed"></div>
 
@@ -470,6 +477,7 @@
     </div>
 
     <script src="group-ui.js"></script>
+    <script src="group-room-ui.js"></script>
     <script src="dist/firebase-entry.js"></script>
     <script src="firebase-integration.js"></script>
     <script src="storage.js"></script>

@@ -256,6 +256,11 @@ function renderGroupMembers(members = []) {
   });
 
   list.appendChild(fragment);
+
+  // グループ部屋UIに実データを渡す
+  if (window.GroupRoomUI) {
+    window.GroupRoomUI.updateMembers(members, currentProfile.groupId);
+  }
 }
 
 async function ensureFirebaseAvailable() {

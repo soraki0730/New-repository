@@ -1870,3 +1870,187 @@ body {
   border-color: var(--primary);
   color: var(--primary);
 }
+
+/* =========================================================
+   グループ部屋 UI（group-room-ui.js）
+   ========================================================= */
+
+/* バッジ */
+.gr-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #e53935;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 999px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+/* メンバーカード */
+.gr-member-card {
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.gr-member-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.gr-member-card__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.gr-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.gr-member-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.2;
+}
+
+.gr-member-pct {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.gr-status {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  margin-top: 3px;
+}
+
+.gr-s--active { background: #e3f2fd; color: #1565c0; }
+.gr-s--done   { background: #e8f5e9; color: #2e7d32; }
+.gr-s--idle   { background: #f5f5f5; color: #757575; }
+
+.gr-progress-track {
+  height: 6px;
+  background: var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.gr-progress-bar {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.gr-member-meta {
+  font-size: 11px;
+  color: var(--ink-soft);
+  display: flex;
+  justify-content: space-between;
+}
+
+.gr-updated {
+  font-size: 10px;
+  color: #b0bec5;
+}
+
+/* 解除申請 */
+.gr-unlock-list { display: flex; flex-direction: column; gap: 10px; }
+
+.gr-empty-note {
+  font-size: 13px;
+  color: var(--ink-soft);
+  padding: 10px 0;
+}
+
+.gr-unlock-card {
+  background: #fff3e0;
+  border: 1px solid #ffcc80;
+  border-radius: var(--radius-sm);
+  padding: 12px;
+}
+
+.gr-unlock-card__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.gr-unlock-icon { font-size: 16px; }
+
+.gr-unlock-user {
+  font-size: 13px;
+  font-weight: 700;
+  color: #e65100;
+  flex: 1;
+}
+
+.gr-unlock-time {
+  font-size: 10px;
+  color: #bf360c;
+}
+
+.gr-unlock-reason {
+  font-size: 12px;
+  color: var(--ink);
+  margin-bottom: 10px;
+  padding-left: 22px;
+  line-height: 1.5;
+}
+
+.gr-unlock-actions {
+  display: flex;
+  gap: 8px;
+  padding-left: 22px;
+}
+
+.gr-approve-btn {
+  flex: 1;
+  background: #2196f3;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 0;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: var(--font-ui);
+}
+
+.gr-approve-btn:active { background: #1565c0; }
+
+.gr-deny-btn {
+  padding: 8px 16px;
+  background: transparent;
+  color: var(--ink-soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: var(--font-ui);
+}
