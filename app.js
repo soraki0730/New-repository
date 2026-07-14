@@ -1517,16 +1517,24 @@ async function renderBotList() {
 async function addBot() {
   const groupId = currentProfile.groupId || activeGroupId;
   if (!groupId) { alert('先にグループIDを設定してください'); return; }
+
   const botId = 'bot-' + Date.now();
   const defaults = { displayName: 'BOT', todayProgress: 0, completedCount: 0, totalCount: 3, studying: false };
   _botCache[botId] = defaults;
-  const firebaseApi = await ensureFirebaseAvailable();
-  if (firebaseApi?.joinGroup) await firebaseApi.joinGroup(groupId, { uid: botId, ...defaults });
+
+  // まずローカル保存してモーダルを即開く
   const ids = await loadBotIds();
   ids.push(botId);
   await saveBotIds(ids);
   await renderBotList();
   openBotEditModal(botId);
+
+  // Firebase書き込みはバックグラウンド（失敗しても続行）
+  ensureFirebaseAvailable().then((firebaseApi) => {
+    if (firebaseApi?.joinGroup) {
+      return firebaseApi.joinGroup(groupId, { uid: botId, ...defaults });
+    }
+  }).catch((e) => console.warn('[BOT] Firebase write failed', e));
 }
 
 function openBotEditModal(botId) {
@@ -1551,8 +1559,7 @@ function closeBotEditModal() {
 
 async function saveBotEdit() {
   if (!_editingBotId) return;
-  const groupId = currentProfile.groupId || activeGroupId;
-  if (!groupId) { alert('グループIDが設定されていません'); return; }
+  const botId = _editingBotId; // closeBotEditModal前に退避
   const data = {
     displayName:    (document.getElementById('bot-name-input').value.trim()) || 'BOT',
     todayProgress:  Number(document.getElementById('bot-progress-input').value) || 0,
@@ -1560,24 +1567,33 @@ async function saveBotEdit() {
     totalCount:     Number(document.getElementById('bot-total-input').value) || 3,
     studying:       document.getElementById('bot-studying-toggle').checked,
   };
-  _botCache[_editingBotId] = data;
-  const firebaseApi = await ensureFirebaseAvailable();
-  if (firebaseApi?.joinGroup) await firebaseApi.joinGroup(groupId, { uid: _editingBotId, ...data });
+  _botCache[botId] = data;
   closeBotEditModal();
   await renderBotList();
+
+  // Firebase書き込みはバックグラウンド
+  const groupId = currentProfile.groupId || activeGroupId;
+  if (groupId) {
+    ensureFirebaseAvailable().then((firebaseApi) => {
+      if (firebaseApi?.joinGroup) return firebaseApi.joinGroup(groupId, { uid: botId, ...data });
+    }).catch((e) => console.warn('[BOT] Firebase write failed', e));
+  }
 }
 
 async function deleteBot(botId) {
   if (!confirm('このBOTを削除しますか？')) return;
-  const groupId = currentProfile.groupId || activeGroupId;
-  const firebaseApi = await ensureFirebaseAvailable();
-  if (groupId && firebaseApi?.deleteGroupMember) {
-    try { await firebaseApi.deleteGroupMember(groupId, botId); } catch (e) { console.warn('[BOT] delete failed', e); }
-  }
   delete _botCache[botId];
   const ids = (await loadBotIds()).filter((id) => id !== botId);
   await saveBotIds(ids);
   await renderBotList();
+
+  // Firebaseから削除はバックグラウンド
+  const groupId = currentProfile.groupId || activeGroupId;
+  if (groupId) {
+    ensureFirebaseAvailable().then((firebaseApi) => {
+      if (firebaseApi?.deleteGroupMember) return firebaseApi.deleteGroupMember(groupId, botId);
+    }).catch((e) => console.warn('[BOT] Firebase delete failed', e));
+  }
 }
 
 async function sendBotUnlockRequest() {
