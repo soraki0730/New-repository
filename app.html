@@ -152,12 +152,6 @@
           </div>
         </div>
 
-        <div class="settings-section" id="bot-section">
-          <p class="settings-section__title">🤖 テストBOT</p>
-          <div id="bot-list" class="bot-list"></div>
-          <button class="bot-add-btn" id="bot-add-btn" type="button">＋ BOTを追加</button>
-        </div>
-
         <div class="settings-section">
           <p class="settings-section__title">学習モード</p>
           <div class="settings-row">
@@ -201,6 +195,12 @@
               追加
             </button>
           </div>
+        </div>
+
+        <div class="settings-section" id="bot-section">
+          <p class="settings-section__title">🤖 テストBOT</p>
+          <div id="bot-list" class="bot-list"></div>
+          <button class="bot-add-btn" id="bot-add-btn" type="button">＋ BOTを追加</button>
         </div>
       </div>
 
@@ -465,7 +465,7 @@
       </template>
 
       <!-- ===== BOT編集モーダル ===== -->
-      <div class="modal-overlay" id="bot-edit-modal" hidden role="dialog" aria-modal="true" aria-label="BOT編集">
+      <div class="modal-overlay" id="bot-edit-modal" role="dialog" aria-modal="true" aria-label="BOT編集">
         <div class="modal-sheet bot-modal-sheet">
           <h3 class="modal-title">BOT編集</h3>
 

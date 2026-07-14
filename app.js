@@ -1539,11 +1539,11 @@ function openBotEditModal(botId) {
   document.getElementById('bot-total-input').value = d.totalCount || 3;
   document.getElementById('bot-studying-toggle').checked = d.studying || false;
   document.getElementById('bot-unlock-reason').value = '';
-  document.getElementById('bot-edit-modal').hidden = false;
+  document.getElementById('bot-edit-modal').classList.add('active');
 }
 
 function closeBotEditModal() {
-  document.getElementById('bot-edit-modal').hidden = true;
+  document.getElementById('bot-edit-modal').classList.remove('active');
   _editingBotId = null;
 }
 
