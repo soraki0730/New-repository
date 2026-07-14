@@ -219,7 +219,7 @@
             <button class="modal-sheet__cancel" id="modal-cancel">
               キャンセル
             </button>
-            <h2 class="modal-sheet__title" id="modal-title">タスク追加</h2>
+            <h2 class="modal-sheet__title">タスク追加</h2>
             <div style="width: 70px"></div>
           </div>
 
@@ -282,6 +282,131 @@
         </div>
       </div>
 
+      <!-- ===== VIEW: グループ ===== -->
+      <div class="view view--group" id="view-group">
+
+        <!-- パネル①：グループホーム -->
+        <div id="group-panel-home">
+          <div class="group-view-header">
+            <div class="group-view-header__info">
+              <h2 id="group-name">グループ名</h2>
+              <span class="group-type-badge" id="group-type-badge"></span>
+            </div>
+            <button class="icon-btn" id="group-settings-btn" aria-label="グループ設定">⚙️</button>
+          </div>
+
+          <div class="section-label">メンバー</div>
+          <div id="group-member-list" class="group-member-list"></div>
+
+          <div class="section-label" style="margin-top:20px">アクティビティ</div>
+          <div id="group-activity-feed" class="activity-feed"></div>
+
+          <button class="group-sub-btn" id="group-join-or-create-btn">
+            ＋ グループを作成・参加
+          </button>
+        </div>
+
+        <!-- パネル②：グループ作成・参加 -->
+        <div id="group-panel-setup" hidden>
+          <div class="group-view-header">
+            <button class="icon-btn" id="group-setup-back" aria-label="戻る">‹</button>
+            <h2>グループ設定</h2>
+            <div style="width:36px"></div>
+          </div>
+
+          <div class="group-setup-tabs">
+            <button class="group-setup-tab active" data-tab="create">作成</button>
+            <button class="group-setup-tab" data-tab="join">参加</button>
+          </div>
+
+          <!-- 作成フォーム -->
+          <div id="group-create-form" class="group-form">
+            <div class="modal-field">
+              <label>グループ名</label>
+              <input id="group-name-input" type="text" placeholder="例）水曜勉強会" autocomplete="off" />
+            </div>
+            <div class="modal-field">
+              <label>グループの種類</label>
+              <div class="group-type-options">
+                <label class="group-type-option">
+                  <input type="radio" name="group-type" value="mild" checked />
+                  <span>ゆるい自習</span>
+                </label>
+                <label class="group-type-option">
+                  <input type="radio" name="group-type" value="focus" />
+                  <span>強制集中</span>
+                </label>
+                <label class="group-type-option">
+                  <input type="radio" name="group-type" value="joint" />
+                  <span>共同課題</span>
+                </label>
+              </div>
+            </div>
+            <button class="modal-submit" id="group-create-btn">グループを作成</button>
+          </div>
+
+          <!-- 参加フォーム -->
+          <div id="group-join-form" class="group-form" hidden>
+            <div class="modal-field">
+              <label>グループID / 招待コード</label>
+              <input id="group-id-input" type="text" placeholder="例）group-abc123" autocomplete="off" />
+            </div>
+            <button class="modal-submit" id="group-join-btn">グループに参加</button>
+          </div>
+        </div>
+
+        <!-- パネル③：グループ設定 -->
+        <div id="group-panel-settings" hidden>
+          <div class="group-view-header">
+            <button class="icon-btn" id="group-settings-back" aria-label="戻る">‹</button>
+            <h2>グループ設定</h2>
+            <div style="width:36px"></div>
+          </div>
+
+          <div class="settings-section">
+            <p class="settings-section__title">タスク共有範囲</p>
+            <div class="radio-group">
+              <label class="radio-option"><input type="radio" name="share-level" value="progress" /> 進捗のみ</label>
+              <label class="radio-option"><input type="radio" name="share-level" value="category" /> カテゴリまで</label>
+              <label class="radio-option"><input type="radio" name="share-level" value="detail" /> タスク詳細</label>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <p class="settings-section__title">通知レベル</p>
+            <div class="radio-group">
+              <label class="radio-option"><input type="radio" name="notify-level" value="low" /> 少なめ</label>
+              <label class="radio-option"><input type="radio" name="notify-level" value="normal" /> 標準</label>
+              <label class="radio-option"><input type="radio" name="notify-level" value="high" /> 強め</label>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <p class="settings-section__title">studyMode解除ルール</p>
+            <div class="radio-group">
+              <label class="radio-option"><input type="radio" name="release-rule" value="free" /> 自由解除</label>
+              <label class="radio-option"><input type="radio" name="release-rule" value="reason" /> 理由入力</label>
+              <label class="radio-option"><input type="radio" name="release-rule" value="approval" /> メンバー承認</label>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <div class="settings-row">
+              <div>
+                <p class="settings-row__label">緊急解除を許可</p>
+                <p class="settings-row__sub">緊急時にルールを無視して解除できます</p>
+              </div>
+              <label class="toggle" aria-label="緊急解除">
+                <input type="checkbox" id="allow-emergency" checked />
+                <span class="toggle__track"></span>
+              </label>
+            </div>
+          </div>
+
+          <button class="modal-submit" id="group-settings-save">設定を保存</button>
+        </div>
+      </div>
+
       <!-- ===== タスク行テンプレート ===== -->
       <template id="task-item">
         <li class="task-card">
@@ -293,7 +418,10 @@
             <span class="task__time"></span>
             <span class="task__title"></span>
             <div class="task-card__footer">
-              <span class="task__category"></span>
+              <div class="task-card__footer-top">
+                <span class="task__category"></span>
+                <button class="task__study-toggle" type="button">勉強中</button>
+              </div>
               <div class="task-card__progress">
                 <input
                   class="task__range"
@@ -307,14 +435,12 @@
               </div>
             </div>
           </div>
-          <div class="task-card__actions">
-            <button class="task__edit" type="button" aria-label="編集">
-              ✎
-            </button>
-            <button class="task__delete" type="button" aria-label="削除">
-              ×
-            </button>
-          </div>
+          <button class="task__edit" type="button" aria-label="編集">
+            ✎
+          </button>
+          <button class="task__delete" type="button" aria-label="削除">
+            ×
+          </button>
         </li>
       </template>
 
@@ -336,9 +462,14 @@
           <span class="nav-btn__icon">⚙️</span>
           <span>設定</span>
         </button>
+        <button class="nav-btn" data-view="group">
+          <span class="nav-btn__icon">👥</span>
+          <span>グループ</span>
+        </button>
       </nav>
     </div>
 
+    <script src="group-ui.js"></script>
     <script src="dist/firebase-entry.js"></script>
     <script src="firebase-integration.js"></script>
     <script src="storage.js"></script>

@@ -116,7 +116,8 @@ function loadStudyMode() {
   if (useChrome()) {
     return new Promise((resolve) => {
       chrome.storage.local.get([STUDY_MODE_KEY], (result) => {
-        resolve(result?.[STUDY_MODE_KEY] ?? false);
+        const value = result?.[STUDY_MODE_KEY];
+        resolve(Boolean(value));
       });
     });
   }
@@ -126,15 +127,16 @@ function loadStudyMode() {
 }
 
 function saveStudyMode(value) {
+  const normalized = Boolean(value);
   if (useChrome()) {
     return new Promise((resolve) => {
-      chrome.storage.local.set({ [STUDY_MODE_KEY]: value }, () => {
+      chrome.storage.local.set({ [STUDY_MODE_KEY]: normalized }, () => {
         resolve();
       });
     });
   }
 
-  localStorage.setItem(STUDY_MODE_KEY, JSON.stringify(value));
+  localStorage.setItem(STUDY_MODE_KEY, JSON.stringify(normalized));
   return Promise.resolve();
 }
 
