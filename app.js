@@ -249,6 +249,11 @@ function renderGroupMembers(members = []) {
   });
 
   list.appendChild(fragment);
+
+  // グループ部屋UIも更新
+  if (window.GroupRoomUI) {
+    window.GroupRoomUI.updateMembers(members, currentProfile.groupId, currentProfile.groupId);
+  }
 }
 
 async function ensureFirebaseAvailable() {
@@ -328,6 +333,12 @@ async function saveProfileAndJoinGroup() {
   await firebaseApi.upsertUserProfile(currentUid, { displayName, groupId });
   await syncTodayProgressToFirebase();
   await subscribeToGroup(groupId);
+
+  // グループ部屋UIにグループIDを通知
+  if (window.GroupRoomUI) {
+    window.GroupRoomUI.setGroup(groupId, groupId);
+  }
+
   return true;
 }
 

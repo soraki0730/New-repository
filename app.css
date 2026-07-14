@@ -1481,3 +1481,358 @@ body {
     transition: none !important;
   }
 }
+
+/* =========================================================
+   グループ部屋 UI
+   ========================================================= */
+
+/* 5ボタンナビ対応 */
+.bottom-nav {
+  gap: 0;
+}
+.bottom-nav .nav-btn {
+  min-width: 0;
+  flex: 1;
+  font-size: 10px;
+  padding: 6px 2px;
+}
+.bottom-nav .nav-btn__icon {
+  font-size: 18px;
+}
+
+/* ===== グループビュー共通 ===== */
+.view--group {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding-bottom: 80px;
+  overflow-y: auto;
+}
+
+.gr-section {
+  background: var(--surface);
+  margin: 12px 12px 0;
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+
+.gr-section__head {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  letter-spacing: 0.04em;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gr-empty-note {
+  font-size: 13px;
+  color: var(--ink-soft);
+  text-align: center;
+  padding: 12px 0;
+}
+
+/* ===== ヘッダー ===== */
+.gr-header {
+  background: linear-gradient(135deg, #1565c0 0%, #1976d2 100%);
+  color: #fff;
+  padding: 20px 16px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gr-header__title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.gr-header__icon {
+  font-size: 28px;
+}
+
+.gr-header__name {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.2;
+}
+
+.gr-header__id {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.75);
+  margin-top: 2px;
+}
+
+.gr-header__count {
+  font-size: 13px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  padding: 4px 12px;
+  color: #fff;
+}
+
+/* ===== バッジ ===== */
+.gr-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #e53935;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 999px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  margin-left: 4px;
+}
+
+/* ===== メンバーカード ===== */
+.gr-member-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gr-member-card {
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+}
+
+.gr-member-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.gr-member-card__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.gr-member-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.gr-member-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.2;
+}
+
+.gr-member-pct {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.gr-status-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  margin-top: 3px;
+}
+
+.gr-status-badge.status--active {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.gr-status-badge.status--done {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.gr-status-badge.status--idle {
+  background: #f5f5f5;
+  color: #757575;
+}
+
+.gr-member-progress-track {
+  height: 6px;
+  background: var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.gr-member-progress-bar {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.gr-member-meta {
+  font-size: 11px;
+  color: var(--ink-soft);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gr-member-updated {
+  font-size: 10px;
+  color: #b0bec5;
+}
+
+/* ===== 解除申請カード ===== */
+.gr-unlock-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gr-unlock-card {
+  background: #fff3e0;
+  border: 1px solid #ffcc80;
+  border-radius: var(--radius-sm);
+  padding: 12px;
+}
+
+.gr-unlock-card__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.gr-unlock-icon {
+  font-size: 16px;
+}
+
+.gr-unlock-user {
+  font-size: 13px;
+  font-weight: 700;
+  color: #e65100;
+  flex: 1;
+}
+
+.gr-unlock-time {
+  font-size: 10px;
+  color: #bf360c;
+}
+
+.gr-unlock-reason {
+  font-size: 12px;
+  color: var(--ink);
+  margin-bottom: 10px;
+  padding-left: 22px;
+  line-height: 1.5;
+}
+
+.gr-unlock-actions {
+  display: flex;
+  gap: 8px;
+  padding-left: 22px;
+}
+
+.gr-approve-btn {
+  flex: 1;
+  background: #2196f3;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 0;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.gr-approve-btn:active {
+  background: #1565c0;
+}
+
+.gr-deny-btn {
+  padding: 8px 16px;
+  background: transparent;
+  color: var(--ink-soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* ===== アクティビティ ===== */
+.gr-activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.gr-activity-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  position: relative;
+}
+
+.gr-activity-row:last-child {
+  border-bottom: none;
+}
+
+.gr-activity-time {
+  font-size: 11px;
+  color: var(--ink-soft);
+  flex-shrink: 0;
+  width: 38px;
+  padding-top: 2px;
+}
+
+.gr-activity-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.gr-activity-text {
+  font-size: 13px;
+  color: var(--ink);
+  line-height: 1.4;
+}
+
+.gr-activity-sub {
+  font-size: 11px;
+  color: var(--ink-soft);
+  padding: 4px 8px;
+  background: #fce4ec;
+  border-radius: 6px;
+  margin-top: 2px;
+}
+
+.gr-activity-row--emergency .gr-activity-text {
+  color: #c62828;
+  font-weight: 700;
+}
+
+.gr-activity-row--study .gr-activity-text {
+  color: #1565c0;
+}
+
+.gr-activity-row--task .gr-activity-text {
+  color: #2e7d32;
+}

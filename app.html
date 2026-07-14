@@ -318,6 +318,43 @@
         </li>
       </template>
 
+      <!-- ===== VIEW: グループ部屋 ===== -->
+      <div class="view view--group" id="view-group">
+        <!-- ヘッダー -->
+        <div class="gr-header">
+          <div class="gr-header__title">
+            <span class="gr-header__icon">👥</span>
+            <div>
+              <h2 id="gr-group-name" class="gr-header__name">グループ部屋</h2>
+              <p id="gr-group-id" class="gr-header__id"></p>
+            </div>
+          </div>
+          <span class="gr-header__count"><span id="gr-member-count">0</span>人</span>
+        </div>
+
+        <!-- メンバー一覧 -->
+        <div class="gr-section">
+          <h3 class="gr-section__head">📊 メンバーの進捗</h3>
+          <p id="gr-member-empty" class="gr-empty-note">グループIDを設定してください</p>
+          <div id="gr-member-list" class="gr-member-list"></div>
+        </div>
+
+        <!-- 解除申請 -->
+        <div class="gr-section">
+          <h3 class="gr-section__head">
+            🔓 解除申請
+            <span id="gr-unlock-badge" class="gr-badge" hidden></span>
+          </h3>
+          <div id="gr-unlock-list" class="gr-unlock-list"></div>
+        </div>
+
+        <!-- アクティビティ -->
+        <div class="gr-section">
+          <h3 class="gr-section__head">📋 アクティビティ</h3>
+          <div id="gr-activity-list" class="gr-activity-list"></div>
+        </div>
+      </div>
+
       <!-- ===== ボトムナビ ===== -->
       <nav class="bottom-nav" aria-label="メインナビゲーション">
         <button class="nav-btn active" data-view="home">
@@ -332,6 +369,10 @@
           <span class="nav-btn__icon">📊</span>
           <span>分析</span>
         </button>
+        <button class="nav-btn" data-view="group">
+          <span class="nav-btn__icon">👥</span>
+          <span>グループ</span>
+        </button>
         <button class="nav-btn" data-view="settings">
           <span class="nav-btn__icon">⚙️</span>
           <span>設定</span>
@@ -339,6 +380,7 @@
       </nav>
     </div>
 
+    <script src="group-room-ui.js"></script>
     <script src="dist/firebase-entry.js"></script>
     <script src="firebase-integration.js"></script>
     <script src="storage.js"></script>
