@@ -188,6 +188,20 @@
               <span class="toggle__track"></span>
             </label>
           </div>
+
+          <div class="unlock-request-card" id="unlock-request-card">
+            <div class="unlock-request-card__head">
+              <span class="unlock-request-state-pill" id="unlock-request-status-pill">未申請</span>
+              <span class="unlock-request-card__hint">解除理由を入力して申請</span>
+            </div>
+            <p class="unlock-request-card__summary" id="unlock-request-summary">
+              studyModeをOFFにする前に、解除理由を入力して申請できます。
+            </p>
+            <div class="unlock-request-actions">
+              <button class="unlock-request-btn" id="unlock-request-submit" type="button">解除申請</button>
+              <button class="unlock-request-btn--emergency" id="unlock-request-emergency" type="button">緊急解除</button>
+            </div>
+          </div>
         </div>
 
         <div class="settings-section">
@@ -411,6 +425,21 @@
           </div>
 
           <button class="modal-submit" id="group-settings-save">設定を保存</button>
+        </div>
+      </div>
+
+      <div class="unlock-request-modal" id="unlock-request-modal" role="dialog" aria-modal="true" aria-label="解除申請理由">
+        <div class="unlock-request-modal__sheet">
+          <h3 class="unlock-request-modal__title">解除理由を入力</h3>
+          <div class="unlock-request-modal__field">
+            <label for="unlock-request-reason">解除理由</label>
+            <textarea id="unlock-request-reason" class="unlock-request-modal__textarea" placeholder="例）急な用事が入ったので…"></textarea>
+          </div>
+          <div class="unlock-request-modal__actions">
+            <button class="unlock-request-modal__btn" id="unlock-request-modal-cancel" type="button">キャンセル</button>
+            <button class="unlock-request-modal__btn unlock-request-modal__btn--primary" id="unlock-request-modal-submit" type="button">申請する</button>
+            <button class="unlock-request-modal__btn unlock-request-modal__btn--danger" id="unlock-request-modal-emergency" type="button">緊急解除</button>
+          </div>
         </div>
       </div>
 

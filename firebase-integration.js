@@ -54,7 +54,6 @@
     }
     if (!window.studyFirebase) {
       setStatus('Firebase接続エラー', 'error');
-      console.error('[Firebase Integration] studyFirebase not found');
       return;
     }
 
@@ -63,7 +62,7 @@
       const uid = user && user.uid ? String(user.uid) : '';
       const short = uid ? uid.slice(0,8) : '-';
       setStatus(`UID:${short} 接続中…`, 'connecting');
-      console.log('[Firebase Integration] authenticated');
+      // console.log('[Firebase Integration] authenticated');
 
       // avoid double subscribe
       if (unsubscribe && subscribedUid === uid) return;
@@ -74,10 +73,9 @@
         // tasks is array
         saveToStorage(tasks, uid);
         setStatus(`Firebase同期済み：${tasks.length}件 ${formatTime(Date.now())}`, 'success');
-        console.log(`[Firebase Integration] synced: ${tasks.length} tasks`);
-      }, (err)=>{
+        // console.log(`[Firebase Integration] synced: ${tasks.length} tasks`);
+      }, () => {
         setStatus('Firebase接続エラー', 'error');
-        console.error('[Firebase Integration] subscribe error', err);
       });
 
       // studyMode の Firestore 同期（Firestore → chrome.storage.local → popup/app.html 両方に反映）
@@ -91,17 +89,16 @@
           } else {
             try { localStorage.setItem('studyMode', JSON.stringify(settings.studyMode)); } catch(e){}
           }
-          console.log(`[Firebase Integration] studyMode synced: ${settings.studyMode}`);
-        }, (err) => {
-          console.error('[Firebase Integration] settings subscribe error', err);
+          // console.log(`[Firebase Integration] studyMode synced: ${settings.studyMode}`);
+        }, () => {
+          // ignore subscription errors to keep the demo UI quiet
         });
 
         // 起動時にローカルの studyMode を Firestore へ初期プッシュ
         if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
           chrome.storage.local.get(['studyMode'], (res) => {
             const mode = res?.studyMode ?? false;
-            window.studyFirebase.upsertSettings(uid, { studyMode: mode }).catch(e =>
-              console.error('[Firebase Integration] settings push error', e));
+            window.studyFirebase.upsertSettings(uid, { studyMode: mode }).catch(() => undefined);
           });
         }
       }
@@ -113,7 +110,6 @@
             const localTasks = res?.tasks || [];
             localTasks.forEach(t => {
               if (!t || !t.id) {
-                console.warn('[Firebase Integration] skipping local task without id');
                 return;
               }
               // map storage fields to firestore expected fields minimally
@@ -129,22 +125,19 @@
                 startTime: t.startTime,
                 endTime: t.endTime
               };
-              window.studyFirebase.upsertTask(uid, payload).then(() => {
-                console.log(`[Firebase Integration] local task pushed: ${t.id}`);
-              }).catch(e => console.error('[Firebase Integration] push error', e));
+              window.studyFirebase.upsertTask(uid, payload).catch(() => undefined);
             });
-            console.log(`[Firebase Integration] local tasks pushed: ${localTasks.length} tasks`);
+            // console.log(`[Firebase Integration] local tasks pushed: ${localTasks.length} tasks`);
           });
         }
       } catch (e) {
-        console.error('[Firebase Integration] initial push error', e);
+        // ignore initial push errors in the demo flow
       }
 
       setStatus(`UID:${short} 接続済み`, 'success');
 
     } catch(err){
       setStatus('Firebase接続エラー', 'error');
-      console.error('[Firebase Integration] error', err);
     }
   }
 
@@ -178,7 +171,6 @@
           let restoredCount = 0;
           firebaseTasks.forEach(ft => {
             if (!ft || !ft.id) {
-              console.warn('[Firebase Integration] skipping cloud task without id');
               return;
             }
             const id = String(ft.id);
@@ -242,7 +234,7 @@
           });
           await storageSet();
           setStatus(`クラウドから${restoredCount}件復元しました`, 'success');
-          console.log(`[Firebase Integration] restored: ${restoredCount} tasks`);
+          // console.log(`[Firebase Integration] restored: ${restoredCount} tasks`);
           window.location.reload();
         } catch (err) {
           setStatus('Firebase同期エラー', 'error');
@@ -265,8 +257,8 @@
       if (typeof newMode === 'boolean' && newMode !== lastFirebaseStudyMode) {
         lastFirebaseStudyMode = newMode;
         window.studyFirebase.upsertSettings(subscribedUid, { studyMode: newMode })
-          .then(() => console.log(`[Firebase Integration] studyMode pushed: ${newMode}`))
-          .catch(e => console.error('[Firebase Integration] studyMode push error', e));
+          .then(() => undefined)
+          .catch(() => undefined);
       }
     }
 
@@ -281,7 +273,6 @@
     // detect created and updated
     after.forEach(t => {
       if (!t || !t.id) {
-        console.warn('[Firebase Integration] skipping local task without id');
         return;
       }
       const id = String(t.id);
@@ -298,9 +289,7 @@
           date: t.date,
           startTime: t.startTime,
           endTime: t.endTime
-        }).then(()=>{
-          console.log(`[Firebase Integration] local task created: ${id}`);
-        }).catch(e=>console.error('[Firebase Integration] upsert error', e));
+        }).catch(() => undefined);
       } else {
         // compare JSON
         try{
@@ -317,11 +306,9 @@
               date: t.date,
               startTime: t.startTime,
               endTime: t.endTime
-            }).then(()=>{
-              console.log(`[Firebase Integration] local task updated: ${id}`);
-            }).catch(e=>console.error('[Firebase Integration] upsert error', e));
+            }).catch(() => undefined);
           }
-        } catch(e){ console.error(e); }
+        } catch(e){ /* ignore */ }
       }
     });
 
@@ -330,14 +317,12 @@
       if (!t || !t.id) return;
       const id = String(t.id);
       if (!afterMap.has(id)) {
-        window.studyFirebase.deleteTask(subscribedUid, id).then(()=>{
-          console.log(`[Firebase Integration] local task deleted: ${id}`);
-        }).catch(e=>console.error('[Firebase Integration] delete error', e));
+        window.studyFirebase.deleteTask(subscribedUid, id).catch(() => undefined);
       }
     });
 
     // final log
-    console.log(`[Firebase Integration] local tasks pushed: ${after.length} tasks`);
+    // console.log(`[Firebase Integration] local tasks pushed: ${after.length} tasks`);
   }
 
   window.addEventListener('DOMContentLoaded', ()=>{
