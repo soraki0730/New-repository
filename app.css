@@ -363,6 +363,98 @@ body {
   margin-top: 2px;
 }
 
+.unlock-request-empty {
+  color: var(--ink-soft);
+  font-size: 13px;
+  padding: 8px 2px 0;
+}
+
+.unlock-request-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.unlock-request-card {
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  box-shadow: var(--shadow);
+  border-left: 4px solid var(--primary);
+}
+
+.unlock-request-card.is-emergency {
+  border-left-color: #e53935;
+}
+
+.unlock-request-card.is-approved {
+  border-left-color: #43a047;
+}
+
+.unlock-request-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.unlock-request-card__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.unlock-request-card__badge {
+  flex: none;
+  font-size: 11px;
+  color: var(--primary-dark);
+  background: var(--primary-light);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.unlock-request-card.is-emergency .unlock-request-card__badge {
+  color: #b71c1c;
+  background: #ffebee;
+}
+
+.unlock-request-card.is-approved .unlock-request-card__badge {
+  color: #1b5e20;
+  background: #e8f5e9;
+}
+
+.unlock-request-card__reason,
+.unlock-request-card__meta {
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.45;
+  margin-top: 4px;
+}
+
+.unlock-request-card__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.unlock-approve-btn {
+  border: none;
+  background: var(--primary);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.unlock-approve-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
 /* ===== TASK LIST ===== */
 .task-list {
   list-style: none;
@@ -764,6 +856,29 @@ body {
   color: #b0bec5;
 }
 
+.modal-field textarea {
+  min-height: 120px;
+  resize: vertical;
+  padding: 13px 16px;
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  font-family: var(--font-ui);
+  font-size: 15px;
+  color: var(--ink);
+  background: #fafafa;
+  transition: border-color 0.2s;
+}
+
+.modal-field textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: white;
+}
+
+.modal-field textarea::placeholder {
+  color: #b0bec5;
+}
+
 .modal-submit {
   width: 100%;
   padding: 16px;
@@ -781,6 +896,30 @@ body {
 
 .modal-submit:hover {
   background: var(--primary-dark);
+}
+
+.unlock-modal-sheet {
+  padding-bottom: 32px;
+}
+
+.unlock-modal-error {
+  color: #c62828;
+  font-size: 13px;
+  margin: -4px 0 12px;
+}
+
+.unlock-emergency-btn {
+  width: 100%;
+  padding: 14px;
+  background: #ffebee;
+  color: #b71c1c;
+  border: none;
+  border-radius: var(--radius);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 10px;
 }
 
 /* 時間フィールドを横並びにする */
@@ -1339,6 +1478,35 @@ body {
   font-size: 12px;
   color: var(--ink-soft);
   margin-top: 2px;
+}
+
+.unlock-status-card {
+  margin: 0 16px 16px;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  background: #fff8e1;
+  color: #7a5600;
+  font-size: 13px;
+  line-height: 1.45;
+  border: 1px solid #ffe0a3;
+}
+
+.unlock-status-card.is-emergency {
+  background: #ffebee;
+  color: #b71c1c;
+  border-color: #ffcdd2;
+}
+
+.unlock-status-card.is-approved {
+  background: #e8f5e9;
+  color: #1b5e20;
+  border-color: #c8e6c9;
+}
+
+.unlock-status-card strong {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 4px;
 }
 
 /* Toggle switch */

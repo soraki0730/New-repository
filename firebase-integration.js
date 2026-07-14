@@ -54,7 +54,7 @@
     }
     if (!window.studyFirebase) {
       setStatus('Firebase接続エラー', 'error');
-      console.error('[Firebase Integration] studyFirebase not found');
+      console.warn('[Firebase Integration] studyFirebase not found');
       return;
     }
 
@@ -77,7 +77,7 @@
         console.log(`[Firebase Integration] synced: ${tasks.length} tasks`);
       }, (err)=>{
         setStatus('Firebase接続エラー', 'error');
-        console.error('[Firebase Integration] subscribe error', err);
+        console.warn('[Firebase Integration] subscribe error', err);
       });
 
       // studyMode の Firestore 同期（Firestore → chrome.storage.local → popup/app.html 両方に反映）
@@ -101,7 +101,7 @@
           chrome.storage.local.get(['studyMode'], (res) => {
             const mode = res?.studyMode ?? false;
             window.studyFirebase.upsertSettings(uid, { studyMode: mode }).catch(e =>
-              console.error('[Firebase Integration] settings push error', e));
+              console.warn('[Firebase Integration] settings push error', e));
           });
         }
       }
@@ -131,20 +131,20 @@
               };
               window.studyFirebase.upsertTask(uid, payload).then(() => {
                 console.log(`[Firebase Integration] local task pushed: ${t.id}`);
-              }).catch(e => console.error('[Firebase Integration] push error', e));
+              }).catch(e => console.warn('[Firebase Integration] push error', e));
             });
             console.log(`[Firebase Integration] local tasks pushed: ${localTasks.length} tasks`);
           });
         }
       } catch (e) {
-        console.error('[Firebase Integration] initial push error', e);
+        console.warn('[Firebase Integration] initial push error', e);
       }
 
       setStatus(`UID:${short} 接続済み`, 'success');
 
     } catch(err){
       setStatus('Firebase接続エラー', 'error');
-      console.error('[Firebase Integration] error', err);
+      console.warn('[Firebase Integration] error', err);
     }
   }
 
@@ -246,7 +246,7 @@
           window.location.reload();
         } catch (err) {
           setStatus('Firebase同期エラー', 'error');
-          console.error('[Firebase Integration] restore error', err);
+          console.warn('[Firebase Integration] restore error', err);
         } finally {
           isRestoring = false;
           if (restoreButton) restoreButton.disabled = false;
@@ -266,7 +266,7 @@
         lastFirebaseStudyMode = newMode;
         window.studyFirebase.upsertSettings(subscribedUid, { studyMode: newMode })
           .then(() => console.log(`[Firebase Integration] studyMode pushed: ${newMode}`))
-          .catch(e => console.error('[Firebase Integration] studyMode push error', e));
+          .catch(e => console.warn('[Firebase Integration] studyMode push error', e));
       }
     }
 
@@ -300,7 +300,7 @@
           endTime: t.endTime
         }).then(()=>{
           console.log(`[Firebase Integration] local task created: ${id}`);
-        }).catch(e=>console.error('[Firebase Integration] upsert error', e));
+        }).catch(e=>console.warn('[Firebase Integration] upsert error', e));
       } else {
         // compare JSON
         try{
@@ -319,9 +319,9 @@
               endTime: t.endTime
             }).then(()=>{
               console.log(`[Firebase Integration] local task updated: ${id}`);
-            }).catch(e=>console.error('[Firebase Integration] upsert error', e));
+            }).catch(e=>console.warn('[Firebase Integration] upsert error', e));
           }
-        } catch(e){ console.error(e); }
+        } catch(e){ console.warn(e); }
       }
     });
 
@@ -332,7 +332,7 @@
       if (!afterMap.has(id)) {
         window.studyFirebase.deleteTask(subscribedUid, id).then(()=>{
           console.log(`[Firebase Integration] local task deleted: ${id}`);
-        }).catch(e=>console.error('[Firebase Integration] delete error', e));
+        }).catch(e=>console.warn('[Firebase Integration] delete error', e));
       }
     });
 

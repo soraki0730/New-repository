@@ -27,7 +27,7 @@ function setStatus(text) {
 function setError(err) {
   const message = err && err.message ? err.message : String(err);
   if (errorEl) errorEl.textContent = message;
-  console.error(message, err);
+  console.warn(message, err);
 }
 
 function renderTasks(tasks) {

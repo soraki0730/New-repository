@@ -10,6 +10,12 @@ let currentProfile = { displayName: '', groupId: '' };
 let groupUnsubscribe = null;
 let activeGroupId = '';
 let editingTaskId = null;
+let unlockRequestUnsubscribe = null;
+let isSettingStudyMode = false;
+
+const UNLOCK_STATE_KEY = 'unlockRequestState';
+const UNLOCK_REQUESTS_KEY = 'unlockRequests';
+const EMERGENCY_UNLOCK_HISTORY_KEY = 'emergencyUnlockHistory';
 
 // ====== 日付ユーティリティ ======
 
@@ -176,6 +182,206 @@ function saveProfileSettings(displayName, groupId) {
   }
 }
 
+function storageGet(keys) {
+  return new Promise((resolve) => {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.get(keys, (result) => {
+        resolve(result || {});
+      });
+      return;
+    }
+
+    const result = {};
+    (Array.isArray(keys) ? keys : [keys]).forEach((key) => {
+      try {
+        const value = localStorage.getItem(key);
+        result[key] = value ? JSON.parse(value) : undefined;
+      } catch (error) {
+        result[key] = undefined;
+      }
+    });
+    resolve(result);
+  });
+}
+
+function storageSet(payload) {
+  return new Promise((resolve) => {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.set(payload, () => resolve());
+      return;
+    }
+
+    Object.entries(payload).forEach(([key, value]) => {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch (error) {
+        console.warn('[Unlock Request] local save failed', error);
+      }
+    });
+    resolve();
+  });
+}
+
+function makeUnlockId(prefix) {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `${prefix}-${crypto.randomUUID()}`;
+  }
+  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+function formatUnlockTime(timestamp) {
+  if (!timestamp) return '';
+  const value = typeof timestamp.toMillis === 'function' ? timestamp.toMillis() : timestamp;
+  return new Date(value).toLocaleString('ja-JP', {
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+function getUnlockActorName() {
+  return currentProfile.displayName || '名前未設定';
+}
+
+function getUnlockGroupId() {
+  return currentProfile.groupId || activeGroupId || '';
+}
+
+async function getUnlockUidSafely() {
+  try {
+    return await ensureCurrentUser();
+  } catch (error) {
+    console.warn('[Unlock Request] Firebase user unavailable; using local-only request', error);
+    return currentUid || '';
+  }
+}
+
+async function readUnlockState() {
+  const result = await storageGet([UNLOCK_STATE_KEY]);
+  return result?.[UNLOCK_STATE_KEY] || { status: 'none' };
+}
+
+async function saveUnlockState(state) {
+  await storageSet({ [UNLOCK_STATE_KEY]: state || { status: 'none' } });
+}
+
+async function readLocalUnlockRequests() {
+  const result = await storageGet([UNLOCK_REQUESTS_KEY]);
+  return Array.isArray(result?.[UNLOCK_REQUESTS_KEY]) ? result[UNLOCK_REQUESTS_KEY] : [];
+}
+
+async function saveLocalUnlockRequests(requests) {
+  await storageSet({ [UNLOCK_REQUESTS_KEY]: requests });
+}
+
+async function upsertLocalUnlockRequest(request) {
+  const requests = await readLocalUnlockRequests();
+  const index = requests.findIndex((item) => item.id === request.id);
+  if (index >= 0) {
+    requests[index] = { ...requests[index], ...request };
+  } else {
+    requests.unshift(request);
+  }
+  await saveLocalUnlockRequests(requests.slice(0, 20));
+}
+
+async function readEmergencyUnlockHistory() {
+  const result = await storageGet([EMERGENCY_UNLOCK_HISTORY_KEY]);
+  return Array.isArray(result?.[EMERGENCY_UNLOCK_HISTORY_KEY]) ? result[EMERGENCY_UNLOCK_HISTORY_KEY] : [];
+}
+
+async function saveEmergencyUnlockHistory(items) {
+  await storageSet({ [EMERGENCY_UNLOCK_HISTORY_KEY]: items });
+}
+
+async function addLocalEmergencyUnlockHistory(item) {
+  const history = await readEmergencyUnlockHistory();
+  await saveEmergencyUnlockHistory([item, ...history].slice(0, 20));
+}
+
+async function callFirebaseUnlockMethod(methodName, payload) {
+  const firebaseApi = await ensureFirebaseAvailable();
+  const method = firebaseApi?.[methodName];
+  if (typeof method !== 'function') return null;
+
+  try {
+    if (method.length >= 3) {
+      return await method(payload.groupId, payload.uid, payload);
+    }
+    if (method.length >= 2) {
+      return await method(payload.groupId, payload);
+    }
+    return await method(payload);
+  } catch (error) {
+    console.warn(`[Unlock Request] ${methodName} failed; using local storage`, error);
+    return null;
+  }
+}
+
+async function persistUnlockRequest(reason) {
+  const uid = await getUnlockUidSafely();
+  const now = Date.now();
+  const request = {
+    id: makeUnlockId('unlock'),
+    type: 'unlock-request',
+    status: 'pending',
+    uid: uid || '',
+    displayName: getUnlockActorName(),
+    groupId: getUnlockGroupId(),
+    reason,
+    createdAt: now,
+    updatedAt: now,
+    source: 'local'
+  };
+
+  const result = await callFirebaseUnlockMethod('createUnlockRequest', request);
+  const savedRequest = {
+    ...request,
+    id: typeof result === 'string' ? result : (result?.id || request.id),
+    source: result ? 'firestore' : 'local'
+  };
+
+  await upsertLocalUnlockRequest(savedRequest);
+  return savedRequest;
+}
+
+async function persistEmergencyUnlock(reason) {
+  const uid = await getUnlockUidSafely();
+  const now = Date.now();
+  const item = {
+    id: makeUnlockId('emergency'),
+    type: 'emergency-unlock',
+    status: 'emergency',
+    uid: uid || '',
+    displayName: getUnlockActorName(),
+    groupId: getUnlockGroupId(),
+    reason,
+    createdAt: now,
+    updatedAt: now,
+    source: 'local'
+  };
+
+  const result = await callFirebaseUnlockMethod('createEmergencyUnlockHistory', item);
+  const savedItem = {
+    ...item,
+    id: typeof result === 'string' ? result : (result?.id || item.id),
+    source: result ? 'firestore' : 'local'
+  };
+
+  await addLocalEmergencyUnlockHistory(savedItem);
+  return savedItem;
+}
+
 function setProfileFormValues(profile = {}) {
   const displayNameInput = document.getElementById('profile-display-name');
   const groupIdInput = document.getElementById('profile-group-id');
@@ -258,6 +464,207 @@ function renderGroupMembers(members = []) {
   list.appendChild(fragment);
 }
 
+async function renderUnlockStatus() {
+  const card = document.getElementById('unlock-status-card');
+  if (!card) return;
+
+  const state = await readUnlockState();
+  card.classList.remove('is-emergency', 'is-approved');
+
+  if (!state || state.status === 'none') {
+    card.hidden = true;
+    card.innerHTML = '';
+    return;
+  }
+
+  card.hidden = false;
+  if (state.status === 'pending') {
+    card.innerHTML = `
+      <strong>承認待ち</strong>
+      解除申請を送信しました。承認されるまでスタディモードはONのままです。<br>
+      理由：${escapeHtml(state.reason || '理由未入力')}
+    `;
+    return;
+  }
+
+  if (state.status === 'emergency') {
+    card.classList.add('is-emergency');
+    card.innerHTML = `
+      <strong>緊急解除しました</strong>
+      理由：${escapeHtml(state.reason || '理由未入力')}
+    `;
+    return;
+  }
+
+  if (state.status === 'approved') {
+    card.classList.add('is-approved');
+    card.innerHTML = `
+      <strong>解除申請が承認されました</strong>
+      スタディモードをOFFにしました。<br>
+      理由：${escapeHtml(state.reason || '理由未入力')}
+    `;
+  }
+}
+
+function renderUnlockRequestCard(item) {
+  const card = document.createElement('div');
+  const isEmergency = item.type === 'emergency-unlock' || item.status === 'emergency';
+  const isApproved = item.status === 'approved';
+  card.className = [
+    'unlock-request-card',
+    isEmergency ? 'is-emergency' : '',
+    isApproved ? 'is-approved' : ''
+  ].filter(Boolean).join(' ');
+
+  const top = document.createElement('div');
+  top.className = 'unlock-request-card__top';
+
+  const title = document.createElement('div');
+  title.className = 'unlock-request-card__title';
+  title.textContent = item.displayName || '名前未設定';
+
+  const badge = document.createElement('span');
+  badge.className = 'unlock-request-card__badge';
+  if (isEmergency) {
+    badge.textContent = '緊急解除';
+  } else if (isApproved) {
+    badge.textContent = '承認済み';
+  } else {
+    badge.textContent = '承認待ち';
+  }
+
+  top.appendChild(title);
+  top.appendChild(badge);
+
+  const reason = document.createElement('div');
+  reason.className = 'unlock-request-card__reason';
+  reason.textContent = item.reason ? `理由：${item.reason}` : '理由：未入力';
+
+  const meta = document.createElement('div');
+  meta.className = 'unlock-request-card__meta';
+  const created = formatUnlockTime(item.createdAt);
+  const source = item.source === 'firestore' ? 'Firestore' : 'ローカル保存';
+  meta.textContent = [created, source].filter(Boolean).join(' · ');
+
+  card.appendChild(top);
+  card.appendChild(reason);
+  card.appendChild(meta);
+
+  if (!isEmergency && !isApproved) {
+    const actions = document.createElement('div');
+    actions.className = 'unlock-request-card__actions';
+
+    const approveBtn = document.createElement('button');
+    approveBtn.className = 'unlock-approve-btn';
+    approveBtn.type = 'button';
+    approveBtn.textContent = '承認';
+    approveBtn.addEventListener('click', async () => {
+      approveBtn.disabled = true;
+      await approveUnlockRequestForDemo(item);
+      await renderUnlockStatus();
+      await renderUnlockRequests();
+    });
+
+    actions.appendChild(approveBtn);
+    card.appendChild(actions);
+  }
+
+  return card;
+}
+
+async function renderUnlockRequests(remoteRequests = null) {
+  const list = document.getElementById('unlock-request-list');
+  const empty = document.getElementById('unlock-request-empty');
+  if (!list || !empty) return;
+
+  const localRequests = remoteRequests || await readLocalUnlockRequests();
+  const emergencyHistory = await readEmergencyUnlockHistory();
+  const currentGroup = getUnlockGroupId();
+  const combined = [...localRequests, ...emergencyHistory]
+    .filter((item) => !currentGroup || !item.groupId || item.groupId === currentGroup)
+    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+  list.innerHTML = '';
+  empty.hidden = combined.length > 0;
+
+  if (combined.length === 0) {
+    empty.textContent = currentGroup ? '解除申請はありません' : 'グループIDを設定すると解除申請が表示されます';
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+  combined.forEach((item) => {
+    fragment.appendChild(renderUnlockRequestCard(item));
+  });
+  list.appendChild(fragment);
+}
+
+async function subscribeToUnlockRequests(groupId) {
+  if (unlockRequestUnsubscribe) {
+    try { unlockRequestUnsubscribe(); } catch (error) {}
+    unlockRequestUnsubscribe = null;
+  }
+
+  await renderUnlockRequests();
+  if (!groupId) return;
+
+  const firebaseApi = await ensureFirebaseAvailable();
+  if (typeof firebaseApi?.subscribeUnlockRequests !== 'function') return;
+
+  try {
+    unlockRequestUnsubscribe = firebaseApi.subscribeUnlockRequests(
+      groupId,
+      async (requests) => {
+        const safeRequests = Array.isArray(requests) ? requests : [];
+        await saveLocalUnlockRequests(safeRequests);
+        await renderUnlockRequests(safeRequests);
+      },
+      async () => {
+        await renderUnlockRequests();
+      }
+    );
+  } catch (error) {
+    console.warn('[Unlock Request] subscribeUnlockRequests failed; using local storage', error);
+    await renderUnlockRequests();
+  }
+}
+
+async function approveUnlockRequestForDemo(item) {
+  const firebaseApi = await ensureFirebaseAvailable();
+  if (typeof firebaseApi?.approveUnlockRequest === 'function') {
+    try {
+      if (firebaseApi.approveUnlockRequest.length >= 2) {
+        await firebaseApi.approveUnlockRequest(item.groupId, item.id);
+      } else {
+        await firebaseApi.approveUnlockRequest({ groupId: item.groupId, requestId: item.id, id: item.id });
+      }
+    } catch (error) {
+      console.warn('[Unlock Request] approveUnlockRequest failed; approving locally', error);
+    }
+  }
+
+  const approved = {
+    ...item,
+    status: 'approved',
+    approvedAt: Date.now(),
+    updatedAt: Date.now()
+  };
+  await upsertLocalUnlockRequest(approved);
+
+  const state = await readUnlockState();
+  if (state?.requestId === item.id || item.uid === currentUid) {
+    await saveUnlockState({
+      ...state,
+      ...approved,
+      status: 'approved',
+      requestId: item.id
+    });
+    isSettingStudyMode = true;
+    await saveStudyMode(false);
+    isSettingStudyMode = false;
+  }
+}
+
 async function ensureFirebaseAvailable() {
   if (window.studyFirebase) return window.studyFirebase;
   for (let i = 0; i < 10; i += 1) {
@@ -285,7 +692,7 @@ async function syncTodayProgressToFirebase() {
     console.log(`[Group Share] progress updated: ${progressData.completedCount}/${progressData.totalCount} (${progressData.todayProgress}%)`);
     return progressData;
   } catch (error) {
-    console.error('[Group Share] progress update failed', error);
+    console.warn('[Group Share] progress update failed', error);
     return null;
   }
 }
@@ -299,10 +706,12 @@ async function subscribeToGroup(groupId) {
   activeGroupId = groupId || '';
   if (!groupId) {
     renderGroupMembers([]);
+    await subscribeToUnlockRequests('');
     return;
   }
 
   const firebaseApi = await ensureFirebaseAvailable();
+  await subscribeToUnlockRequests(groupId);
   if (!firebaseApi?.subscribeGroupMembers) return;
 
   groupUnsubscribe = firebaseApi.subscribeGroupMembers(
@@ -311,7 +720,7 @@ async function subscribeToGroup(groupId) {
       renderGroupMembers(members);
     },
     (error) => {
-      console.error('[Group Share] group subscription error', error);
+      console.warn('[Group Share] group subscription error', error);
       renderGroupMembers([]);
     }
   );
@@ -828,6 +1237,156 @@ function getDefaultTimes() {
 
 // ====== モーダル ======
 
+function setUnlockModalError(message) {
+  if (!els.unlockModalError) return;
+  els.unlockModalError.hidden = !message;
+  els.unlockModalError.textContent = message || '';
+}
+
+function openUnlockModal() {
+  if (!els.unlockModal || !els.unlockReasonInput) return;
+  els.unlockReasonInput.value = '';
+  setUnlockModalError('');
+  els.unlockModal.classList.add('active');
+  setTimeout(() => els.unlockReasonInput.focus(), 50);
+}
+
+function closeUnlockModal() {
+  if (!els.unlockModal) return;
+  els.unlockModal.classList.remove('active');
+  if (els.unlockReasonInput) els.unlockReasonInput.value = '';
+  setUnlockModalError('');
+}
+
+function setUnlockButtonsDisabled(disabled) {
+  if (els.unlockRequestSubmit) els.unlockRequestSubmit.disabled = disabled;
+  if (els.unlockEmergencySubmit) els.unlockEmergencySubmit.disabled = disabled;
+}
+
+function getUnlockReason() {
+  return (els.unlockReasonInput?.value || '').trim();
+}
+
+async function submitUnlockRequest() {
+  const reason = getUnlockReason();
+  if (!reason) {
+    setUnlockModalError('解除理由を入力してください');
+    els.unlockReasonInput?.focus();
+    return;
+  }
+
+  setUnlockButtonsDisabled(true);
+  try {
+    const request = await persistUnlockRequest(reason);
+    await saveUnlockState({
+      status: 'pending',
+      requestId: request.id,
+      reason,
+      groupId: request.groupId,
+      createdAt: request.createdAt,
+      source: request.source
+    });
+
+    isSettingStudyMode = true;
+    await saveStudyMode(true);
+    if (els.studyToggle) els.studyToggle.checked = true;
+    isSettingStudyMode = false;
+
+    closeUnlockModal();
+    await renderUnlockStatus();
+    await renderUnlockRequests();
+  } finally {
+    setUnlockButtonsDisabled(false);
+    isSettingStudyMode = false;
+  }
+}
+
+async function submitEmergencyUnlock() {
+  const reason = getUnlockReason();
+  if (!reason) {
+    setUnlockModalError('緊急解除の理由を入力してください');
+    els.unlockReasonInput?.focus();
+    return;
+  }
+
+  setUnlockButtonsDisabled(true);
+  try {
+    const item = await persistEmergencyUnlock(reason);
+    await saveUnlockState({
+      status: 'emergency',
+      emergencyId: item.id,
+      reason,
+      groupId: item.groupId,
+      createdAt: item.createdAt,
+      source: item.source
+    });
+
+    isSettingStudyMode = true;
+    await saveStudyMode(false);
+    if (els.studyToggle) els.studyToggle.checked = false;
+    isSettingStudyMode = false;
+
+    closeUnlockModal();
+    await renderUnlockStatus();
+    await renderUnlockRequests();
+  } finally {
+    setUnlockButtonsDisabled(false);
+    isSettingStudyMode = false;
+  }
+}
+
+async function handleStudyModeToggleChange(studyToggle) {
+  if (isSettingStudyMode) return;
+
+  if (studyToggle.checked) {
+    await saveUnlockState({ status: 'none' });
+    await saveStudyMode(true);
+    await renderUnlockStatus();
+    return;
+  }
+
+  const wasStudyModeOn = await loadStudyMode();
+  if (!wasStudyModeOn) {
+    await saveStudyMode(false);
+    await renderUnlockStatus();
+    return;
+  }
+
+  studyToggle.checked = true;
+  isSettingStudyMode = true;
+  await saveStudyMode(true);
+  isSettingStudyMode = false;
+  await renderUnlockStatus();
+  openUnlockModal();
+}
+
+async function keepStudyModeOnWhilePending(studyToggle, nextValue) {
+  if (isSettingStudyMode || nextValue !== false) return false;
+  const state = await readUnlockState();
+  if (state?.status !== 'pending') return false;
+
+  studyToggle.checked = true;
+  isSettingStudyMode = true;
+  await saveStudyMode(true);
+  isSettingStudyMode = false;
+  await renderUnlockStatus();
+  return true;
+}
+
+function setSelectedCategory(category) {
+  document.querySelectorAll(".category-chip").forEach((chip) => {
+    chip.classList.toggle("selected", chip.dataset.value === category);
+  });
+}
+
+function setModalMode(task) {
+  const isEditing = Boolean(task);
+  if (els.modalTitle) els.modalTitle.textContent = isEditing ? "タスク編集" : "タスク追加";
+  if (els.modalSubmit) els.modalSubmit.textContent = isEditing ? "変更を保存" : "タスクを追加";
+  els.modal.setAttribute("aria-label", isEditing ? "タスク編集" : "タスク追加");
+}
+
+
 function openModal(defaultDate, task = null) {
   editingTaskId = task?.id || null;
   els.input.value = task?.title || "";
@@ -990,6 +1549,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   els.taskEndTime       = document.getElementById("task-end-time");
   els.blockUrlList      = document.getElementById("block-url-list");
   els.blockUrlInput     = document.getElementById("block-url-input");
+  els.studyToggle       = document.getElementById("study-mode-toggle");
+  els.unlockModal       = document.getElementById("unlock-modal");
+  els.unlockReasonInput = document.getElementById("unlock-reason-input");
+  els.unlockModalError  = document.getElementById("unlock-modal-error");
+  els.unlockRequestSubmit = document.getElementById("unlock-request-submit");
+  els.unlockEmergencySubmit = document.getElementById("unlock-emergency-submit");
 
   // 時間入力フォーマット設定
   setupTimeInput(els.taskStartTime);
@@ -1009,14 +1574,26 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("add-btn-tasks").addEventListener("click", () => openModal(dateToStr(navDate)));
   document.getElementById("modal-cancel").addEventListener("click", closeModal);
   els.modalSubmit.addEventListener("click", handleSubmit);
+  document.getElementById("unlock-modal-cancel")?.addEventListener("click", closeUnlockModal);
+  els.unlockRequestSubmit?.addEventListener("click", submitUnlockRequest);
+  els.unlockEmergencySubmit?.addEventListener("click", submitEmergencyUnlock);
 
   els.input.addEventListener("keydown", (e) => {
     if (e.key === "Enter")  handleSubmit();
     if (e.key === "Escape") closeModal();
   });
 
+  els.unlockReasonInput?.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeUnlockModal();
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") submitUnlockRequest();
+  });
+
   els.modal.addEventListener("click", (e) => {
     if (e.target === els.modal) closeModal();
+  });
+
+  els.unlockModal?.addEventListener("click", (e) => {
+    if (e.target === els.unlockModal) closeUnlockModal();
   });
 
   // ボトムナビゲーション
@@ -1059,15 +1636,29 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (e.key === "Enter") handleAddBlockUrl();
   });
 
-  // 設定：スタディモードトグル（主導権：chrome.storage.local が唯一の真実）
-  const studyToggle = document.getElementById("study-mode-toggle");
-  if (studyToggle) {
-    // 起動時に現在値を反映
-    await syncStudyModeUi();
+  // 設定：スタディモード（解除申請フロー統合版）
+  const studyOn = await loadStudyMode();
+  if (els.studyToggle) {
+    els.studyToggle.checked = studyOn;
+    els.studyToggle.addEventListener("change", async () => {
+      await handleStudyModeToggleChange(els.studyToggle);
+    });
+  }
 
-    // トグル操作 → storage に保存（popup にも自動反映される）
-    studyToggle.addEventListener("change", async () => {
-      await saveStudyMode(studyToggle.checked);
+  // chrome.storage の変化を監視してトグルを最新状態に保つ
+  if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.onChanged) {
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== "local") return;
+      if (changes.studyMode && els.studyToggle) {
+        const nextStudyMode = changes.studyMode.newValue ?? false;
+        keepStudyModeOnWhilePending(els.studyToggle, nextStudyMode).then((keptOn) => {
+          if (!keptOn) els.studyToggle.checked = nextStudyMode;
+        });
+      }
+      if (changes[UNLOCK_STATE_KEY] || changes[UNLOCK_REQUESTS_KEY] || changes[EMERGENCY_UNLOCK_HISTORY_KEY]) {
+        renderUnlockStatus();
+        renderUnlockRequests();
+      }
     });
 
     // popup など他からの変更 → トグルを最新値に更新
@@ -1084,6 +1675,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderAll();
   blockUrls = await loadBlockedSites();
   renderBlockUrls();
+  await renderUnlockStatus();
+  await renderUnlockRequests();
 
   // プロフィール・グループ共有
   document.getElementById('profile-save-btn').addEventListener('click', async () => {
