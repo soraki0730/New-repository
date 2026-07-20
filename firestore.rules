@@ -134,6 +134,17 @@ service cloud.firestore {
           && request.resource.data.actorUid == request.auth.uid;
         allow update, delete: if false;
       }
+
+      match /reactions/{reactionId} {
+        allow read: if isGroupMember(groupId);
+        allow create: if isGroupMember(groupId)
+          && request.resource.data.actorUid == request.auth.uid
+          && request.resource.data.targetType in ['member', 'activity']
+          && request.resource.data.emojiKey in ['clap', 'fire', 'like'];
+        allow update: if false;
+        allow delete: if isGroupMember(groupId)
+          && resource.data.actorUid == request.auth.uid;
+      }
     }
   }
 }

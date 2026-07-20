@@ -15,7 +15,9 @@ import {
   joinGroup as joinGroupRecord,
   subscribeGroup,
   subscribeGroupActivities,
+  subscribeGroupReactions,
   subscribeGroupMembers,
+  toggleGroupReaction,
   updateGroupMemberProgress,
   updateGroupSettings,
   upsertTestBot as upsertTestBotRecord
@@ -136,6 +138,8 @@ window.studyFirebase = {
   updateGroupSettings,
   createGroupActivity,
   subscribeGroupActivities,
+  subscribeGroupReactions,
+  toggleGroupReaction,
   createUnlockRequest,
   subscribeUnlockRequests,
   approveUnlockRequest,

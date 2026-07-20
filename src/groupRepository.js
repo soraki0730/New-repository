@@ -9,6 +9,7 @@ import {
   orderBy,
   query,
   serverTimestamp,
+  setDoc,
   updateDoc,
   writeBatch
 } from 'firebase/firestore';
@@ -221,6 +222,49 @@ export function subscribeGroupActivities(groupId, onChange, onError) {
     (snapshot) => onChange(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))),
     onError
   );
+}
+
+export function subscribeGroupReactions(groupId, onChange, onError) {
+  const normalizedGroupId = normalizeText(groupId);
+  if (!normalizedGroupId) {
+    onChange([]);
+    return () => {};
+  }
+  return onSnapshot(
+    collection(db, 'groups', normalizedGroupId, 'reactions'),
+    (snapshot) => onChange(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))),
+    onError
+  );
+}
+
+export async function toggleGroupReaction(groupId, reaction = {}) {
+  const normalizedGroupId = normalizeText(groupId);
+  const actorUid = normalizeText(reaction.actorUid);
+  const targetType = normalizeText(reaction.targetType, 'member');
+  const targetId = normalizeText(reaction.targetId || reaction.targetUid);
+  const emojiKey = normalizeText(reaction.emojiKey);
+  if (!normalizedGroupId || !actorUid || !targetId || !emojiKey) {
+    throw new Error('groupId, actorUid, targetId and emojiKey are required');
+  }
+  const reactionId = [targetType, targetId, actorUid, emojiKey].join('__');
+  const reactionRef = doc(db, 'groups', normalizedGroupId, 'reactions', reactionId);
+  const existing = await getDoc(reactionRef);
+  if (existing.exists()) {
+    await deleteDoc(reactionRef);
+    return { active: false, reactionId };
+  }
+  await setDoc(reactionRef, {
+    actorUid,
+    actorName: normalizeText(reaction.actorName, 'Anonymous'),
+    targetType,
+    targetId,
+    targetUid: normalizeText(reaction.targetUid),
+    targetName: normalizeText(reaction.targetName),
+    emojiKey,
+    emoji: normalizeText(reaction.emoji),
+    createdAt: serverTimestamp()
+  });
+  return { active: true, reactionId };
 }
 
 export async function deleteGroupMember(groupId, uid) {

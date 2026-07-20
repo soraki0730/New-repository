@@ -57,6 +57,17 @@ function makeTask(title, { category = "", date = "", startTime = "", endTime = "
 
 // ====== ロジック（契約関数）======
 
+async function recordTaskActivity(type, task) {
+  if (!window.GroupUI?.recordActivity || !task) return;
+  const shareLevel = window.GroupUI.getSettings?.().shareLevel || 'progress';
+  const taskName = shareLevel === 'detail'
+    ? task.title
+    : shareLevel === 'category'
+      ? task.category
+      : '';
+  await window.GroupUI.recordActivity(type, { taskName: taskName || '' });
+}
+
 async function addTask(title, options = {}) {
   const t = (title || "").trim();
   if (!t) return tasks;
@@ -69,23 +80,27 @@ async function addTask(title, options = {}) {
 async function toggleTask(id) {
   const task = tasks.find((x) => x.id === id);
   if (!task) return tasks;
+  const wasDone = Boolean(task.done);
   task.done = !task.done;
   task.progress = task.done ? 100 : 0;
   task.updatedAt = Date.now();
   await saveTasks(tasks);
   await syncTodayProgressToFirebase();
+  if (!wasDone && task.done) await recordTaskActivity('task_completed', task);
   return tasks;
 }
 
 async function setProgress(id, percent) {
   const task = tasks.find((x) => x.id === id);
   if (!task) return tasks;
+  const wasDone = Boolean(task.done);
   const p = Math.max(0, Math.min(100, Math.round(percent)));
   task.progress = p;
   task.done = p >= 100;
   task.updatedAt = Date.now();
   await saveTasks(tasks);
   await syncTodayProgressToFirebase();
+  if (!wasDone && task.done) await recordTaskActivity('task_completed', task);
   return tasks;
 }
 
@@ -108,6 +123,7 @@ async function toggleTaskStudying(id) {
   task.updatedAt = Date.now();
   await saveTasks(tasks);
   await syncTodayProgressToFirebase();
+  await recordTaskActivity(nextStudying ? 'study_started' : 'study_stopped', task);
   return tasks;
 }
 

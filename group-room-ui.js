@@ -9,6 +9,7 @@
   let members = [];
   let requests = [];
   let emergencyHistory = [];
+  let reactions = [];
   let unsubscribeRequests = null;
   let unsubscribeHistory = null;
 
@@ -76,6 +77,21 @@
     return null;
   }
 
+  const REACTION_OPTIONS = [
+    { key: 'clap', emoji: '👏' },
+    { key: 'fire', emoji: '🔥' },
+    { key: 'like', emoji: '👍' },
+  ];
+
+  function memberReactionButton(member, option, className = 'reaction-btn') {
+    const matching = reactions.filter((reaction) => reaction.targetType === 'member'
+      && reaction.targetId === member.uid && reaction.emojiKey === option.key);
+    const selected = matching.some((reaction) => reaction.actorUid === currentUid);
+    return `<button class="${className}${selected ? ' is-selected' : ''}" data-uid="${escapeHtml(member.uid)}"
+      data-name="${escapeHtml(member.displayName)}" data-emoji="${option.emoji}" type="button"
+      aria-pressed="${selected}"><span>${option.emoji}</span><strong>${matching.length || ''}</strong></button>`;
+  }
+
   function statusBadge(member) {
     if (member.totalCount === 0) return { text: '未設定', cls: 'gr-s--idle' };
     if (member.todayProgress >= 100) return { text: '完了 🎉', cls: 'gr-s--done' };
@@ -127,7 +143,7 @@
             </div>
           </div>
           ${preview ? `<p class="group-study-card__detail">${escapeHtml(preview.label)}<strong>${escapeHtml(preview.value)}</strong></p>` : ''}
-          ${isSelf ? '' : `<button class="group-study-card__action" data-uid="${escapeHtml(member.uid)}" data-name="${escapeHtml(member.displayName)}" data-emoji="👏" type="button">👏 応援する</button>`}
+          ${isSelf ? '' : memberReactionButton(member, REACTION_OPTIONS[0], 'group-study-card__action')}
         </article>
       `;
     }).join('');
@@ -135,13 +151,9 @@
     list.querySelectorAll('.group-study-card__action').forEach((button) => {
       button.addEventListener('click', async () => {
         try {
-          await window.GroupUI?.sendReaction(button.dataset.uid, button.dataset.name, button.dataset.emoji);
           button.disabled = true;
-          button.textContent = '応援しました';
-          setTimeout(() => {
-            button.disabled = false;
-            button.textContent = '👏 応援する';
-          }, 1200);
+          await window.GroupUI?.sendReaction(button.dataset.uid, button.dataset.name, button.dataset.emoji);
+          button.disabled = false;
         } catch (error) {
           console.error('[GroupRoom] cheer failed', error);
         }
@@ -206,7 +218,7 @@
           </div>
           ${renderSharedTasks(member.sharedTasks)}
           ${isSelf ? '' : `<div class="group-reactions">
-            ${['👏', '🔥', '👍'].map((emoji) => `<button class="reaction-btn" data-uid="${escapeHtml(member.uid)}" data-name="${escapeHtml(member.displayName)}" data-emoji="${emoji}" type="button">${emoji}</button>`).join('')}
+            ${REACTION_OPTIONS.map((option) => memberReactionButton(member, option)).join('')}
           </div>`}
         </div>
       `;
@@ -370,6 +382,10 @@
         groupId = nextGroupId || '';
         subscribe();
       }
+      renderMembers();
+    },
+    updateReactions(nextReactions) {
+      reactions = Array.isArray(nextReactions) ? nextReactions : [];
       renderMembers();
     },
     setGroup(nextGroupId) {

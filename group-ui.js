@@ -16,8 +16,11 @@
   let groupId = '';
   let groupData = null;
   let currentActivities = [];
+  let currentReactions = [];
+  let activityExpanded = false;
   let unsubscribeGroup = null;
   let unsubscribeActivities = null;
+  let unsubscribeReactions = null;
 
   function escapeHtml(value) {
     return String(value ?? '')
@@ -131,8 +134,46 @@
       case 'emergency_unlock': return `${actor}さんがstudyModeを緊急解除しました`;
       case 'reason_unlock': return `${actor}さんが理由を記録してstudyModeを解除しました`;
       case 'settings_updated': return `${actor}さんがグループ設定を更新しました`;
+      case 'study_started': return `${actor}さんが集中を始めました`;
+      case 'study_stopped': return `${actor}さんが集中を終えました`;
+      case 'task_completed': return `${actor}さんがタスクを完了しました`;
       default: return `${actor}さんがグループを更新しました`;
     }
+  }
+
+  function activityPresentation(activity) {
+    const presentations = {
+      study_started: { icon: '▶', label: '集中スタート', cls: 'activity-item--study' },
+      study_stopped: { icon: '■', label: '集中終了', cls: 'activity-item--study' },
+      task_completed: { icon: '✓', label: 'タスク完了', cls: 'activity-item--complete' },
+      member_joined: { icon: '+', label: '新しい仲間', cls: 'activity-item--member' },
+      group_created: { icon: '＋', label: 'グループ', cls: 'activity-item--member' },
+      unlock_requested: { icon: '!', label: '解除申請', cls: 'activity-item--request' },
+      unlock_approved: { icon: '✓', label: '申請承認', cls: 'activity-item--complete' },
+      unlock_rejected: { icon: '×', label: '申請却下', cls: 'activity-item--request' },
+      emergency_unlock: { icon: '!', label: '緊急解除', cls: 'activity-item--danger' },
+      reason_unlock: { icon: '!', label: '理由付き解除', cls: 'activity-item--request' },
+      settings_updated: { icon: '⚙', label: '設定変更', cls: 'activity-item--system' },
+    };
+    return presentations[activity.type] || { icon: '•', label: '更新', cls: 'activity-item--system' };
+  }
+
+  const REACTION_OPTIONS = [
+    { key: 'clap', emoji: '👏' },
+    { key: 'fire', emoji: '🔥' },
+    { key: 'like', emoji: '👍' },
+  ];
+
+  function reactionButton(targetType, targetId, targetUid, targetName, option) {
+    const matching = currentReactions.filter((reaction) => reaction.targetType === targetType
+      && reaction.targetId === targetId && reaction.emojiKey === option.key);
+    const selected = matching.some((reaction) => reaction.actorUid === currentUid);
+    return `<button class="activity-reaction${selected ? ' is-selected' : ''}" type="button"
+      data-target-type="${escapeHtml(targetType)}" data-target-id="${escapeHtml(targetId)}"
+      data-target-uid="${escapeHtml(targetUid || '')}" data-target-name="${escapeHtml(targetName || '')}"
+      data-emoji-key="${option.key}" data-emoji="${option.emoji}" aria-pressed="${selected}">
+      <span>${option.emoji}</span><strong>${matching.length || ''}</strong>
+    </button>`;
   }
 
   function renderActivities(activities = []) {
@@ -148,17 +189,49 @@
       : notificationLevel === 'standard' || notificationLevel === 'normal'
         ? activities.filter((activity) => activity.type !== 'reaction')
         : activities;
-    if (visibleActivities.length === 0) {
+    const timelineActivities = visibleActivities.filter((activity) => activity.type !== 'reaction');
+    if (timelineActivities.length === 0) {
       feed.innerHTML = '<p class="gr-empty-note">まだアクティビティはありません</p>';
+      const moreButton = document.getElementById('group-activity-more');
+      if (moreButton) moreButton.hidden = true;
       return;
     }
-    feed.innerHTML = visibleActivities.map((activity) => `
-      <div class="activity-item">
-        <span class="activity-item__dot"></span>
-        <span class="activity-item__text">${escapeHtml(activityText(activity))}</span>
-        <span class="activity-item__time">${escapeHtml(formatRelative(activity.createdAt))}</span>
-      </div>
-    `).join('');
+    const displayed = activityExpanded ? timelineActivities : timelineActivities.slice(0, 5);
+    feed.innerHTML = displayed.map((activity) => {
+      const actor = activity.actorName || activity.displayName || 'メンバー';
+      const presentation = activityPresentation(activity);
+      return `<article class="activity-item ${presentation.cls}">
+        <div class="activity-item__icon" aria-hidden="true">${presentation.icon}</div>
+        <div class="activity-item__body">
+          <div class="activity-item__meta"><span>${escapeHtml(presentation.label)}</span><time>${escapeHtml(formatRelative(activity.createdAt))}</time></div>
+          <p class="activity-item__text">${escapeHtml(activityText(activity))}</p>
+          ${activity.taskName ? `<p class="activity-item__task">${escapeHtml(activity.taskName)}</p>` : ''}
+          ${activity.actorUid === currentUid ? '' : `<div class="activity-item__reactions">${REACTION_OPTIONS.map((option) => reactionButton('activity', activity.id, activity.actorUid, actor, option)).join('')}</div>`}
+        </div>
+      </article>`;
+    }).join('');
+    feed.querySelectorAll('.activity-reaction').forEach((button) => {
+      button.addEventListener('click', async () => {
+        button.disabled = true;
+        try {
+          await toggleReaction({
+            targetType: button.dataset.targetType,
+            targetId: button.dataset.targetId,
+            targetUid: button.dataset.targetUid,
+            targetName: button.dataset.targetName,
+            emojiKey: button.dataset.emojiKey,
+            emoji: button.dataset.emoji,
+          });
+        } finally {
+          button.disabled = false;
+        }
+      });
+    });
+    const moreButton = document.getElementById('group-activity-more');
+    if (moreButton) {
+      moreButton.hidden = timelineActivities.length <= 5;
+      moreButton.textContent = activityExpanded ? '最新5件に戻す' : `もっと見る（残り${timelineActivities.length - 5}件）`;
+    }
   }
 
   async function ensureFirebase() {
@@ -173,13 +246,17 @@
   function stopSubscriptions() {
     if (typeof unsubscribeGroup === 'function') unsubscribeGroup();
     if (typeof unsubscribeActivities === 'function') unsubscribeActivities();
+    if (typeof unsubscribeReactions === 'function') unsubscribeReactions();
     unsubscribeGroup = null;
     unsubscribeActivities = null;
+    unsubscribeReactions = null;
   }
 
   async function subscribeCurrentGroup() {
     stopSubscriptions();
     currentActivities = [];
+    currentReactions = [];
+    activityExpanded = false;
     renderHeader();
     renderActivities([]);
     if (!groupId) {
@@ -214,6 +291,15 @@
       }, (error) => {
         console.error('[Group] activity subscription failed', error);
         setFeedback('アクティビティの取得に失敗しました', 'error');
+      });
+    }
+    if (api.subscribeGroupReactions) {
+      unsubscribeReactions = api.subscribeGroupReactions(groupId, (reactions) => {
+        currentReactions = reactions;
+        renderActivities(currentActivities);
+        window.GroupRoomUI?.updateReactions?.(currentReactions);
+      }, (error) => {
+        console.error('[Group] reaction subscription failed', error);
       });
     }
   }
@@ -341,9 +427,23 @@
     }
   }
 
+  async function toggleReaction(reaction = {}) {
+    const api = await ensureFirebase();
+    if (!groupId || !currentUid || !api?.toggleGroupReaction) return { active: false };
+    if (reaction.targetUid === currentUid) return { active: false };
+    return api.toggleGroupReaction(groupId, {
+      ...reaction,
+      actorUid: currentUid,
+      actorName: displayName,
+    });
+  }
+
   async function sendReaction(targetUid, targetName, emoji) {
-    if (!groupId || !targetUid || targetUid === currentUid) return;
-    await recordActivity('reaction', { targetUid, targetName, emoji });
+    if (!groupId || !targetUid || targetUid === currentUid) return { active: false };
+    const emojiKey = { '👏': 'clap', '🔥': 'fire', '👍': 'like' }[emoji] || 'clap';
+    const result = await toggleReaction({ targetType: 'member', targetId: targetUid, targetUid, targetName, emojiKey, emoji });
+    if (result.active) await recordActivity('reaction', { targetUid, targetName, emoji });
+    return result;
   }
 
   function initButtons() {
@@ -369,6 +469,10 @@
     document.getElementById('group-settings-back')?.addEventListener('click', () => showGroupPanel('group-panel-home'));
     document.getElementById('group-setup-back')?.addEventListener('click', () => showGroupPanel('group-panel-home'));
     document.getElementById('group-join-or-create-btn')?.addEventListener('click', () => showGroupPanel('group-panel-setup'));
+    document.getElementById('group-activity-more')?.addEventListener('click', () => {
+      activityExpanded = !activityExpanded;
+      renderActivities(currentActivities);
+    });
   }
 
   window.GroupUI = {
