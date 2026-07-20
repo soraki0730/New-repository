@@ -56,7 +56,13 @@
     if (!Array.isArray(sharedTasks) || sharedTasks.length === 0) return '';
     return `<div class="gr-shared-tasks">${sharedTasks.map((task) => {
       if (task.title) {
-        return `<div class="gr-shared-task"><span>${escapeHtml(task.title)}</span><strong>${Number(task.progress) || 0}%</strong></div>`;
+        return `<div class="gr-shared-task">
+          <span class="gr-shared-task__label">
+            <span>${escapeHtml(task.title)}</span>
+            <small class="gr-shared-task__category">${escapeHtml(task.category || '未分類')}</small>
+          </span>
+          <strong>${Number(task.progress) || 0}%</strong>
+        </div>`;
       }
       return `<div class="gr-shared-task"><span>${escapeHtml(task.category || '未分類')}</span><strong>${Number(task.completedCount) || 0}/${Number(task.totalCount) || 0}</strong></div>`;
     }).join('')}</div>`;
