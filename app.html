@@ -282,33 +282,99 @@
 
       <!-- ===== VIEW: グループ ===== -->
       <div class="view view--group" id="view-group">
-
         <!-- パネル①：グループホーム -->
-        <div id="group-panel-home">
-          <div class="group-view-header">
-            <div class="group-view-header__info">
-              <h2 id="group-name">グループ名</h2>
-              <span class="group-type-badge" id="group-type-badge"></span>
-              <span class="group-id-label" id="group-id-label"></span>
+        <div id="group-panel-home" class="group-panel-home">
+          <section class="group-section-card group-section-card--info">
+            <div class="group-view-header">
+              <div class="group-view-header__info">
+                <h2 id="group-name">グループ名</h2>
+                <span class="group-type-badge" id="group-type-badge"></span>
+                <span class="group-id-label" id="group-id-label"></span>
+              </div>
+              <button class="icon-btn" id="group-settings-btn" aria-label="グループ設定">⚙️</button>
             </div>
-            <button class="icon-btn" id="group-settings-btn" aria-label="グループ設定">⚙️</button>
-          </div>
+          </section>
 
-          <div class="section-label">メンバー</div>
-          <div id="group-member-list" class="group-member-list"></div>
+          <section class="group-section-card group-section-card--study" id="group-study-section">
+            <div class="group-section-card__head">
+              <div>
+                <p class="group-section-card__eyebrow">学習中</p>
+                <h3 class="group-section-card__title">いま勉強中</h3>
+              </div>
+            </div>
+            <p id="group-study-empty" class="group-study-empty" hidden>まだ誰も始めていません</p>
+            <div id="group-study-list" class="group-study-list"></div>
+            <p class="group-study-hint">学習モードは右上の設定からONにできます。</p>
+          </section>
 
-          <!-- 解除申請（group-room-ui.js が描画） -->
-          <div class="section-label" style="margin-top:20px">
-            🔓 解除申請
-            <span id="gr-unlock-badge" class="gr-badge" hidden></span>
-          </div>
-          <div id="gr-unlock-list" class="gr-unlock-list"></div>
+          <section class="group-section-card group-section-card--summary" id="group-summary-section">
+            <div class="group-section-card__head">
+              <div>
+                <p class="group-section-card__eyebrow">共有進捗</p>
+                <h3 class="group-section-card__title">今日のグループ進捗</h3>
+              </div>
+            </div>
+            <div class="group-summary-progress">
+              <div class="group-summary-progress__meta">
+                <strong id="group-summary-progress-text">0 / 0 タスク</strong>
+                <span id="group-summary-progress-pct">0%</span>
+              </div>
+              <div class="group-summary-progress__track" aria-hidden="true">
+                <div id="group-summary-progress-bar" class="group-summary-progress__bar"></div>
+              </div>
+            </div>
+          </section>
 
-          <div class="section-label" style="margin-top:20px">🚨 緊急解除履歴</div>
-          <div id="gr-emergency-list" class="gr-emergency-list"></div>
+          <section class="group-section-card group-section-card--request" id="group-request-section">
+            <div class="group-section-card__head">
+              <div>
+                <p class="group-section-card__eyebrow">対応待ち</p>
+                <h3 class="group-section-card__title">解除申請</h3>
+              </div>
+              <span id="gr-unlock-badge" class="gr-badge" hidden></span>
+            </div>
+            <!-- 解除申請（group-room-ui.js が描画） -->
+            <details class="group-history-toggle group-history-toggle--requests">
+              <summary class="group-history-toggle__summary">過去の申請を表示</summary>
+              <div id="gr-unlock-list" class="gr-unlock-list"></div>
+            </details>
+          </section>
 
-          <div class="section-label" style="margin-top:20px">アクティビティ</div>
-          <div id="group-activity-feed" class="activity-feed"></div>
+          <section class="group-section-card group-section-card--members">
+            <div class="group-section-card__head">
+              <div>
+                <p class="group-section-card__eyebrow">進捗</p>
+                <h3 class="group-section-card__title">メンバーの進捗</h3>
+              </div>
+            </div>
+            <div id="group-member-list" class="group-member-list"></div>
+          </section>
+
+          <section class="group-section-card group-section-card--emergency">
+            <div class="group-section-card__head">
+              <div>
+                <p class="group-section-card__eyebrow">危険操作</p>
+                <h3 class="group-section-card__title">緊急解除履歴</h3>
+              </div>
+            </div>
+            <details class="group-history-toggle group-history-toggle--emergency">
+              <summary class="group-history-toggle__summary">最新3件を表示</summary>
+              <div id="gr-emergency-list" class="gr-emergency-list"></div>
+            </details>
+          </section>
+
+          <section class="group-section-card group-section-card--activity">
+            <div class="group-section-card__head">
+              <div>
+                <p class="group-section-card__eyebrow">記録</p>
+                <h3 class="group-section-card__title">最近のアクティビティ</h3>
+              </div>
+            </div>
+            <details class="group-history-toggle group-history-toggle--activity">
+              <summary class="group-history-toggle__summary">最新5件を表示</summary>
+              <div id="group-activity-feed" class="activity-feed"></div>
+            </details>
+          </section>
 
           <button class="group-sub-btn" id="group-join-or-create-btn">
             ＋ グループを作成・参加

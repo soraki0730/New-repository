@@ -45,6 +45,37 @@
     return '#ff9800';
   }
 
+  function getShareLevel() {
+    return window.GroupUI?.getSettings?.()?.shareLevel || 'progress';
+  }
+
+  function sortMembersForDisplay(nextMembers = []) {
+    return [...nextMembers].sort((left, right) => {
+      const leftStudying = left.studying ? 1 : 0;
+      const rightStudying = right.studying ? 1 : 0;
+      if (leftStudying !== rightStudying) return rightStudying - leftStudying;
+      const progressDelta = (right.todayProgress || 0) - (left.todayProgress || 0);
+      if (progressDelta !== 0) return progressDelta;
+      return String(left.displayName || '').localeCompare(String(right.displayName || ''), 'ja');
+    });
+  }
+
+  function getSharedPreview(member) {
+    const shareLevel = getShareLevel();
+    if (shareLevel === 'progress') return null;
+    const sharedTasks = Array.isArray(member.sharedTasks) ? member.sharedTasks : [];
+    if (shareLevel === 'category') {
+      const categoryTask = sharedTasks.find((task) => task?.category);
+      if (!categoryTask?.category) return null;
+      return { label: '共有カテゴリ', value: categoryTask.category };
+    }
+    const detailTask = sharedTasks.find((task) => task?.title);
+    if (detailTask?.title) return { label: '現在のタスク', value: detailTask.title };
+    const categoryTask = sharedTasks.find((task) => task?.category);
+    if (categoryTask?.category) return { label: '共有カテゴリ', value: categoryTask.category };
+    return null;
+  }
+
   function statusBadge(member) {
     if (member.totalCount === 0) return { text: '未設定', cls: 'gr-s--idle' };
     if (member.todayProgress >= 100) return { text: '完了 🎉', cls: 'gr-s--done' };
@@ -68,9 +99,79 @@
     }).join('')}</div>`;
   }
 
+  function renderStudyNowSection() {
+    const list = document.getElementById('group-study-list');
+    const empty = document.getElementById('group-study-empty');
+    if (!list || !empty) return;
+
+    const studyingMembers = sortMembersForDisplay(members.filter((member) => member.studying));
+    if (studyingMembers.length === 0) {
+      list.innerHTML = '';
+      empty.hidden = false;
+      return;
+    }
+
+    empty.hidden = true;
+    list.innerHTML = studyingMembers.map((member) => {
+      const preview = getSharedPreview(member);
+      const isSelf = member.uid === currentUid;
+      return `
+        <article class="group-study-card${isSelf ? ' group-study-card--self' : ''}">
+          <div class="group-study-card__top">
+            <div class="group-study-card__left">
+              <div class="group-study-card__avatar">${escapeHtml((member.displayName || '?')[0])}</div>
+              <div>
+                <div class="group-study-card__name">${escapeHtml(member.displayName || '名前未設定')}${isSelf ? ' <span class="group-badge group-badge--self">自分</span>' : ''}</div>
+                <span class="group-study-card__status">学習中</span>
+              </div>
+            </div>
+          </div>
+          ${preview ? `<p class="group-study-card__detail">${escapeHtml(preview.label)}<strong>${escapeHtml(preview.value)}</strong></p>` : ''}
+          ${isSelf ? '' : `<button class="group-study-card__action" data-uid="${escapeHtml(member.uid)}" data-name="${escapeHtml(member.displayName)}" data-emoji="👏" type="button">👏 応援する</button>`}
+        </article>
+      `;
+    }).join('');
+
+    list.querySelectorAll('.group-study-card__action').forEach((button) => {
+      button.addEventListener('click', async () => {
+        try {
+          await window.GroupUI?.sendReaction(button.dataset.uid, button.dataset.name, button.dataset.emoji);
+          button.disabled = true;
+          button.textContent = '応援しました';
+          setTimeout(() => {
+            button.disabled = false;
+            button.textContent = '👏 応援する';
+          }, 1200);
+        } catch (error) {
+          console.error('[GroupRoom] cheer failed', error);
+        }
+      });
+    });
+  }
+
+  function renderProgressSummary() {
+    const progressText = document.getElementById('group-summary-progress-text');
+    const progressPct = document.getElementById('group-summary-progress-pct');
+    const progressBar = document.getElementById('group-summary-progress-bar');
+    if (!progressText || !progressPct || !progressBar) return;
+
+    const totals = members.reduce((accumulator, member) => {
+      accumulator.completedCount += Number(member.completedCount) || 0;
+      accumulator.totalCount += Number(member.totalCount) || 0;
+      return accumulator;
+    }, { completedCount: 0, totalCount: 0 });
+
+    const progress = totals.totalCount === 0 ? 0 : Math.round((totals.completedCount / totals.totalCount) * 100);
+    progressText.textContent = `${totals.completedCount} / ${totals.totalCount} タスク`;
+    progressPct.textContent = `${progress}%`;
+    progressBar.style.width = `${progress}%`;
+  }
+
   function renderMembers() {
     const list = document.getElementById('group-member-list');
     if (!list) return;
+    renderStudyNowSection();
+    renderProgressSummary();
     if (!groupId) {
       list.innerHTML = '<p class="gr-empty-note">グループに参加するとメンバーが表示されます</p>';
       return;
@@ -79,7 +180,8 @@
       list.innerHTML = '<p class="gr-empty-note">メンバー情報を読み込み中です</p>';
       return;
     }
-    list.innerHTML = members.map((member) => {
+    const displayMembers = sortMembersForDisplay(members);
+    list.innerHTML = displayMembers.map((member) => {
       const progress = Math.max(0, Math.min(100, member.todayProgress || 0));
       const status = statusBadge(member);
       const isSelf = member.uid === currentUid;
@@ -147,12 +249,14 @@
   function renderRequests() {
     const list = document.getElementById('gr-unlock-list');
     const badge = document.getElementById('gr-unlock-badge');
+    const section = document.getElementById('group-request-section');
     if (!list) return;
     const pendingCount = requests.filter((request) => request.status === 'pending').length;
     if (badge) {
       badge.textContent = pendingCount ? String(pendingCount) : '';
       badge.hidden = pendingCount === 0;
     }
+    if (section) section.classList.toggle('is-pending', pendingCount > 0);
     if (!groupId) {
       list.innerHTML = '<p class="gr-empty-note">グループに参加すると解除申請が表示されます</p>';
       return;
@@ -289,6 +393,9 @@
     renderMembers();
     renderRequests();
     renderEmergencyHistory();
+  });
+  window.addEventListener('study-group-settings-changed', () => {
+    renderStudyNowSection();
   });
   window.addEventListener('beforeunload', stopSubscriptions);
 })();
