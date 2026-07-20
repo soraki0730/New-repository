@@ -1,329 +1,420 @@
 /* =========================================================
-   group-ui.js  ―  グループ機能UI担当
-   Firebase処理は別担当が実装するため、スタブ関数で仮置き
+   group-ui.js  ―  グループ作成・参加・設定・活動フィード
    ========================================================= */
 
-// ===== ダミーデータ（Firebase実装前の仮データ） =====
-const DUMMY_GROUP = {
-  id: 'group-abc123',
-  name: '水曜勉強会',
-  type: 'mild', // mild | focus | joint
-};
+(function () {
+  const DEFAULT_SETTINGS = {
+    shareLevel: 'progress',
+    notificationLevel: 'standard',
+    unlockRule: 'approval',
+    emergencyUnlock: true,
+  };
 
-const DUMMY_MEMBERS = [
-  {
-    uid: 'me',
-    displayName: '自分',
-    todayProgress: 75,
-    completedCount: 3,
-    totalCount: 4,
-    isStudying: true,
-    updatedAt: Date.now() - 5 * 60 * 1000,
-    isSelf: true,
-  },
-  {
-    uid: 'uid-riku',
-    displayName: 'Riku',
-    todayProgress: 100,
-    completedCount: 5,
-    totalCount: 5,
-    isStudying: false,
-    updatedAt: Date.now() - 20 * 60 * 1000,
-    isSelf: false,
-  },
-  {
-    uid: 'uid-saki',
-    displayName: 'Saki',
-    todayProgress: 40,
-    completedCount: 2,
-    totalCount: 5,
-    isStudying: true,
-    updatedAt: Date.now() - 2 * 60 * 1000,
-    isSelf: false,
-  },
-  {
-    uid: 'uid-yuto',
-    displayName: 'Yuto',
-    todayProgress: 0,
-    completedCount: 0,
-    totalCount: 3,
-    isStudying: false,
-    updatedAt: Date.now() - 60 * 60 * 1000,
-    isSelf: false,
-  },
-];
+  let firebaseApi = null;
+  let currentUid = '';
+  let displayName = '名前未設定';
+  let groupId = '';
+  let groupData = null;
+  let currentActivities = [];
+  let unsubscribeGroup = null;
+  let unsubscribeActivities = null;
 
-const DUMMY_ACTIVITIES = [
-  { uid: 'uid-saki', displayName: 'Saki', type: 'study_start', time: Date.now() - 2 * 60 * 1000 },
-  { uid: 'uid-riku', displayName: 'Riku', type: 'task_done', taskName: 'プログラミング応用', time: Date.now() - 15 * 60 * 1000 },
-  { uid: 'uid-yuto', displayName: 'Yuto', type: 'reaction', emoji: '👏', targetName: 'Riku', time: Date.now() - 18 * 60 * 1000 },
-  { uid: 'me', displayName: '自分', type: 'study_end', time: Date.now() - 30 * 60 * 1000 },
-];
-
-// ===== グループ設定デフォルト値 =====
-let groupSettings = {
-  shareLevel: 'progress',   // progress | category | detail
-  notifyLevel: 'normal',    // low | normal | high
-  releaseRule: 'free',      // free | reason | approval
-  allowEmergency: true,
-};
-
-// ===== Firebase スタブ関数（別担当が実装） =====
-async function fetchGroupData(groupId) {
-  // TODO: Firebase実装
-  return DUMMY_GROUP;
-}
-
-async function fetchGroupMembers(groupId) {
-  // TODO: Firebase実装
-  return DUMMY_MEMBERS;
-}
-
-async function createGroup(name, type) {
-  // TODO: Firebase実装
-  console.log('[Group] createGroup:', name, type);
-  return { id: 'new-group-' + Date.now(), name, type };
-}
-
-async function joinGroup(groupId) {
-  // TODO: Firebase実装
-  console.log('[Group] joinGroup:', groupId);
-  return true;
-}
-
-async function sendReaction(targetUid, emoji) {
-  // TODO: Firebase実装
-  console.log('[Group] sendReaction:', targetUid, emoji);
-}
-
-async function saveGroupSettings(settings) {
-  // TODO: Firebase実装
-  console.log('[Group] saveGroupSettings:', settings);
-}
-
-// ===== ユーティリティ =====
-function formatRelative(timestamp) {
-  const diff = Math.max(0, Date.now() - timestamp);
-  const min = Math.floor(diff / 60000);
-  if (min < 1) return 'たった今';
-  if (min < 60) return `${min}分前`;
-  const h = Math.floor(min / 60);
-  if (h < 24) return `${h}時間前`;
-  return `${Math.floor(h / 24)}日前`;
-}
-
-function groupTypeLabel(type) {
-  return { mild: 'ゆるい自習', focus: '強制集中', joint: '共同課題' }[type] || type;
-}
-
-function activityText(act) {
-  switch (act.type) {
-    case 'study_start': return `${act.displayName}さんが学習を開始しました`;
-    case 'study_end':   return `${act.displayName}さんが学習を終了しました`;
-    case 'task_done':   return `${act.displayName}さんが「${act.taskName}」を完了しました`;
-    case 'release_req': return `${act.displayName}さんがstudyModeの解除を申請しました`;
-    case 'reaction':    return `${act.displayName}さんが${act.targetName}さんに${act.emoji}を送りました`;
-    default:            return `${act.displayName}さんがアクティビティを更新しました`;
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
   }
-}
 
-// ===== パネル切替 =====
-function showGroupPanel(panelId) {
-  ['group-panel-home', 'group-panel-setup', 'group-panel-settings'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.hidden = (id !== panelId);
-  });
-}
+  function timestampToMillis(timestamp) {
+    if (!timestamp) return 0;
+    if (typeof timestamp.toMillis === 'function') return timestamp.toMillis();
+    return Number(timestamp) || 0;
+  }
 
-// ===== グループホーム描画 =====
-function renderGroupHome(group, members, activities) {
-  // ヘッダー
-  const nameEl = document.getElementById('group-name');
-  const typeEl = document.getElementById('group-type-badge');
-  if (nameEl) nameEl.textContent = group.name;
-  if (typeEl) typeEl.textContent = groupTypeLabel(group.type);
+  function formatRelative(timestamp) {
+    const value = timestampToMillis(timestamp);
+    if (!value) return '';
+    const min = Math.max(0, Math.floor((Date.now() - value) / 60000));
+    if (min < 1) return 'たった今';
+    if (min < 60) return `${min}分前`;
+    const hours = Math.floor(min / 60);
+    if (hours < 24) return `${hours}時間前`;
+    return `${Math.floor(hours / 24)}日前`;
+  }
 
-  // メンバーリスト
-  renderMemberCards(members);
+  function groupTypeLabel(type) {
+    return { mild: 'ゆるい自習', focus: '強制集中', joint: '共同課題' }[type] || 'グループ';
+  }
 
-  // アクティビティ
-  renderActivityFeed(activities);
-}
+  function effectiveSettings() {
+    if (!groupId) return { ...DEFAULT_SETTINGS, unlockRule: 'free' };
+    return { ...DEFAULT_SETTINGS, ...(groupData?.settings || {}) };
+  }
 
-function renderMemberCards(members) {
-  const list = document.getElementById('group-member-list');
-  if (!list) return;
-  list.innerHTML = '';
+  function syncSettingsToStorage() {
+    const payload = { ...effectiveSettings(), groupId };
+    if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+      chrome.storage.local.set({ studyGroupSettings: payload });
+    } else {
+      localStorage.setItem('studyGroupSettings', JSON.stringify(payload));
+    }
+  }
 
-  members.forEach(m => {
-    const card = document.createElement('div');
-    card.className = 'group-member-card' + (m.isSelf ? ' group-member-card--self' : '');
+  function setFeedback(message, kind = '') {
+    let feedback = document.getElementById('group-feedback');
+    if (!feedback) {
+      feedback = document.createElement('p');
+      feedback.id = 'group-feedback';
+      feedback.className = 'group-feedback';
+      document.getElementById('view-group')?.prepend(feedback);
+    }
+    feedback.textContent = message;
+    feedback.dataset.kind = kind;
+    feedback.hidden = !message;
+  }
 
-    card.innerHTML = `
-      <div class="group-member-card__top">
-        <div class="group-member-card__avatar">${m.displayName.slice(0, 1)}</div>
-        <div class="group-member-card__info">
-          <div class="group-member-card__name">
-            ${m.displayName}
-            ${m.isSelf ? '<span class="group-badge group-badge--self">自分</span>' : ''}
-            ${m.isStudying ? '<span class="group-badge group-badge--studying">学習中</span>' : ''}
-          </div>
-          <div class="group-member-card__meta">
-            ${m.completedCount} / ${m.totalCount} タスク完了 &nbsp;·&nbsp; ${formatRelative(m.updatedAt)}
-          </div>
-        </div>
-        <div class="group-member-card__pct">${m.todayProgress}%</div>
+  function showGroupPanel(panelId) {
+    ['group-panel-home', 'group-panel-setup', 'group-panel-settings'].forEach((id) => {
+      const panel = document.getElementById(id);
+      if (panel) panel.hidden = id !== panelId;
+    });
+  }
+
+  function renderHeader() {
+    const name = document.getElementById('group-name');
+    const type = document.getElementById('group-type-badge');
+    const idLabel = document.getElementById('group-id-label');
+    const setupButton = document.getElementById('group-join-or-create-btn');
+    if (name) name.textContent = groupData?.name || (groupId ? 'グループを読み込み中…' : 'グループ未参加');
+    if (type) type.textContent = groupData ? groupTypeLabel(groupData.type) : '';
+    if (idLabel) idLabel.textContent = groupId ? `ID: ${groupId}` : '';
+    if (setupButton) setupButton.textContent = groupId ? 'グループを変更・参加' : '＋ グループを作成・参加';
+  }
+
+  function applySettingsToForm() {
+    const settings = { ...DEFAULT_SETTINGS, ...(groupData?.settings || {}) };
+    const notifyValue = settings.notificationLevel === 'standard' ? 'normal' : settings.notificationLevel;
+    const shareInput = document.querySelector(`input[name="share-level"][value="${settings.shareLevel}"]`);
+    const notifyInput = document.querySelector(`input[name="notify-level"][value="${notifyValue}"]`);
+    const unlockInput = document.querySelector(`input[name="release-rule"][value="${settings.unlockRule}"]`);
+    if (shareInput) shareInput.checked = true;
+    if (notifyInput) notifyInput.checked = true;
+    if (unlockInput) unlockInput.checked = true;
+    const emergency = document.getElementById('allow-emergency');
+    if (emergency) emergency.checked = Boolean(settings.emergencyUnlock);
+
+    const isOwner = Boolean(groupData && groupData.ownerUid === currentUid);
+    const botSection = document.getElementById('bot-section');
+    if (botSection) botSection.hidden = !isOwner;
+    document.querySelectorAll('#group-panel-settings input').forEach((input) => {
+      input.disabled = !isOwner;
+    });
+    const saveButton = document.getElementById('group-settings-save');
+    if (saveButton) {
+      saveButton.disabled = !isOwner;
+      saveButton.textContent = isOwner ? '設定を保存' : '設定変更はオーナーのみ';
+    }
+  }
+
+  function activityText(activity) {
+    const actor = activity.actorName || activity.displayName || 'メンバー';
+    switch (activity.type) {
+      case 'group_created': return `${actor}さんがグループを作成しました`;
+      case 'member_joined': return `${actor}さんがグループに参加しました`;
+      case 'reaction': return `${actor}さんが${activity.targetName || 'メンバー'}さんに${activity.emoji || '👏'}を送りました`;
+      case 'unlock_approved': return `${actor}さんが解除申請を承認しました`;
+      case 'unlock_rejected': return `${actor}さんが解除申請を却下しました`;
+      case 'unlock_requested': return `${actor}さんがstudyModeの解除を申請しました`;
+      case 'emergency_unlock': return `${actor}さんがstudyModeを緊急解除しました`;
+      case 'reason_unlock': return `${actor}さんが理由を記録してstudyModeを解除しました`;
+      case 'settings_updated': return `${actor}さんがグループ設定を更新しました`;
+      default: return `${actor}さんがグループを更新しました`;
+    }
+  }
+
+  function renderActivities(activities = []) {
+    const feed = document.getElementById('group-activity-feed');
+    if (!feed) return;
+    if (!groupId) {
+      feed.innerHTML = '<p class="gr-empty-note">グループに参加すると活動が表示されます</p>';
+      return;
+    }
+    const notificationLevel = groupData?.settings?.notificationLevel || 'standard';
+    const visibleActivities = notificationLevel === 'low'
+      ? activities.filter((activity) => ['unlock_requested', 'unlock_approved', 'unlock_rejected', 'emergency_unlock', 'reason_unlock', 'settings_updated'].includes(activity.type))
+      : notificationLevel === 'standard' || notificationLevel === 'normal'
+        ? activities.filter((activity) => activity.type !== 'reaction')
+        : activities;
+    if (visibleActivities.length === 0) {
+      feed.innerHTML = '<p class="gr-empty-note">まだアクティビティはありません</p>';
+      return;
+    }
+    feed.innerHTML = visibleActivities.map((activity) => `
+      <div class="activity-item">
+        <span class="activity-item__dot"></span>
+        <span class="activity-item__text">${escapeHtml(activityText(activity))}</span>
+        <span class="activity-item__time">${escapeHtml(formatRelative(activity.createdAt))}</span>
       </div>
-      <div class="group-progress-track">
-        <div class="group-progress-bar" style="width:${m.todayProgress}%"></div>
-      </div>
-      ${m.isSelf ? '' : `
-      <div class="group-reactions">
-        ${['👏', '🔥', '👍'].map(e =>
-          `<button class="reaction-btn" data-uid="${m.uid}" data-emoji="${e}">${e}</button>`
-        ).join('')}
-      </div>`}
-    `;
-
-    list.appendChild(card);
-  });
-
-  // リアクションボタンのイベント
-  list.querySelectorAll('.reaction-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      await sendReaction(btn.dataset.uid, btn.dataset.emoji);
-      btn.classList.add('reaction-btn--sent');
-      setTimeout(() => btn.classList.remove('reaction-btn--sent'), 1500);
-    });
-  });
-}
-
-function renderActivityFeed(activities) {
-  const feed = document.getElementById('group-activity-feed');
-  if (!feed) return;
-  feed.innerHTML = '';
-
-  activities.forEach(act => {
-    const item = document.createElement('div');
-    item.className = 'activity-item';
-    item.innerHTML = `
-      <span class="activity-item__dot"></span>
-      <span class="activity-item__text">${activityText(act)}</span>
-      <span class="activity-item__time">${formatRelative(act.time)}</span>
-    `;
-    feed.appendChild(item);
-  });
-}
-
-// ===== グループ作成・参加パネル =====
-function initGroupSetupPanel() {
-  const tabs = document.querySelectorAll('.group-setup-tab');
-  const createPanel = document.getElementById('group-create-form');
-  const joinPanel   = document.getElementById('group-join-form');
-
-  tabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      tabs.forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      const target = tab.dataset.tab;
-      if (createPanel) createPanel.hidden = (target !== 'create');
-      if (joinPanel)   joinPanel.hidden   = (target !== 'join');
-    });
-  });
-
-  // 作成ボタン
-  const createBtn = document.getElementById('group-create-btn');
-  if (createBtn) {
-    createBtn.addEventListener('click', async () => {
-      const name = document.getElementById('group-name-input')?.value.trim();
-      const type = document.querySelector('input[name="group-type"]:checked')?.value || 'mild';
-      if (!name) { alert('グループ名を入力してください'); return; }
-      createBtn.disabled = true;
-      createBtn.textContent = '作成中…';
-      await createGroup(name, type);
-      createBtn.disabled = false;
-      createBtn.textContent = 'グループを作成';
-      showGroupPanel('group-panel-home');
-      renderGroupHome(DUMMY_GROUP, DUMMY_MEMBERS, DUMMY_ACTIVITIES);
-    });
+    `).join('');
   }
 
-  // 参加ボタン
-  const joinBtn = document.getElementById('group-join-btn');
-  if (joinBtn) {
-    joinBtn.addEventListener('click', async () => {
-      const gid = document.getElementById('group-id-input')?.value.trim();
-      if (!gid) { alert('グループIDを入力してください'); return; }
-      joinBtn.disabled = true;
-      joinBtn.textContent = '参加中…';
-      await joinGroup(gid);
-      joinBtn.disabled = false;
-      joinBtn.textContent = 'グループに参加';
-      showGroupPanel('group-panel-home');
-      renderGroupHome(DUMMY_GROUP, DUMMY_MEMBERS, DUMMY_ACTIVITIES);
-    });
+  async function ensureFirebase() {
+    if (firebaseApi) return firebaseApi;
+    for (let index = 0; index < 30 && !window.studyFirebase; index += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    firebaseApi = window.studyFirebase || null;
+    return firebaseApi;
   }
-}
 
-// ===== グループ設定パネル =====
-function initGroupSettingsPanel() {
-  const saveBtn = document.getElementById('group-settings-save');
-  if (!saveBtn) return;
+  function stopSubscriptions() {
+    if (typeof unsubscribeGroup === 'function') unsubscribeGroup();
+    if (typeof unsubscribeActivities === 'function') unsubscribeActivities();
+    unsubscribeGroup = null;
+    unsubscribeActivities = null;
+  }
 
-  // 現在値を反映
-  const shareRadio = document.querySelector(`input[name="share-level"][value="${groupSettings.shareLevel}"]`);
-  if (shareRadio) shareRadio.checked = true;
-  const notifyRadio = document.querySelector(`input[name="notify-level"][value="${groupSettings.notifyLevel}"]`);
-  if (notifyRadio) notifyRadio.checked = true;
-  const releaseRadio = document.querySelector(`input[name="release-rule"][value="${groupSettings.releaseRule}"]`);
-  if (releaseRadio) releaseRadio.checked = true;
-  const emergencyToggle = document.getElementById('allow-emergency');
-  if (emergencyToggle) emergencyToggle.checked = groupSettings.allowEmergency;
+  async function subscribeCurrentGroup() {
+    stopSubscriptions();
+    currentActivities = [];
+    renderHeader();
+    renderActivities([]);
+    if (!groupId) {
+      groupData = null;
+      applySettingsToForm();
+      syncSettingsToStorage();
+      return;
+    }
+    const api = await ensureFirebase();
+    if (!api?.subscribeGroup) {
+      setFeedback('グループ情報を読み込めませんでした', 'error');
+      return;
+    }
+    unsubscribeGroup = api.subscribeGroup(groupId, (nextGroup) => {
+      groupData = nextGroup;
+      renderHeader();
+      applySettingsToForm();
+      syncSettingsToStorage();
+      renderActivities(currentActivities);
+      window.dispatchEvent(new CustomEvent('study-group-settings-changed', {
+        detail: { groupId, settings: groupData?.settings || DEFAULT_SETTINGS }
+      }));
+      if (!nextGroup) setFeedback('指定したグループが見つかりません', 'error');
+    }, (error) => {
+      console.error('[Group] subscribe failed', error);
+      setFeedback('グループ情報の取得に失敗しました', 'error');
+    });
+    if (api.subscribeGroupActivities) {
+      unsubscribeActivities = api.subscribeGroupActivities(groupId, (activities) => {
+        currentActivities = activities;
+        renderActivities(currentActivities);
+      }, (error) => {
+        console.error('[Group] activity subscription failed', error);
+        setFeedback('アクティビティの取得に失敗しました', 'error');
+      });
+    }
+  }
 
-  saveBtn.addEventListener('click', async () => {
-    groupSettings = {
-      shareLevel:     document.querySelector('input[name="share-level"]:checked')?.value || 'progress',
-      notifyLevel:    document.querySelector('input[name="notify-level"]:checked')?.value || 'normal',
-      releaseRule:    document.querySelector('input[name="release-rule"]:checked')?.value || 'free',
-      allowEmergency: document.getElementById('allow-emergency')?.checked ?? true,
+  async function saveProfileGroup(nextGroupId) {
+    groupId = nextGroupId;
+    if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+      await new Promise((resolve) => chrome.storage.local.set({ firebaseGroupId: nextGroupId }, resolve));
+    } else {
+      localStorage.setItem('firebaseGroupId', nextGroupId);
+    }
+    if (firebaseApi?.upsertUserProfile && currentUid) {
+      await firebaseApi.upsertUserProfile(currentUid, { displayName, groupId: nextGroupId });
+    }
+    window.dispatchEvent(new CustomEvent('study-group-changed', {
+      detail: { groupId: nextGroupId, displayName }
+    }));
+    await subscribeCurrentGroup();
+  }
+
+  async function recordActivity(type, extra = {}) {
+    const api = await ensureFirebase();
+    if (!groupId || !currentUid || !api?.createGroupActivity) return false;
+    try {
+      await api.createGroupActivity(groupId, {
+        actorUid: currentUid,
+        actorName: displayName,
+        type,
+        ...extra,
+      });
+      return true;
+    } catch (error) {
+      console.warn('[Group] activity write failed', error);
+      return false;
+    }
+  }
+
+  async function createNewGroup() {
+    const nameInput = document.getElementById('group-name-input');
+    const button = document.getElementById('group-create-btn');
+    const name = nameInput?.value.trim() || '';
+    const type = document.querySelector('input[name="group-type"]:checked')?.value || 'mild';
+    if (!name) {
+      setFeedback('グループ名を入力してください', 'error');
+      nameInput?.focus();
+      return;
+    }
+    const api = await ensureFirebase();
+    if (!api?.createGroup || !currentUid) {
+      setFeedback('Firebaseに接続できません', 'error');
+      return;
+    }
+    button.disabled = true;
+    button.textContent = '作成中…';
+    try {
+      const result = await api.createGroup({ name, type, ownerUid: currentUid, ownerName: displayName });
+      await saveProfileGroup(result.groupId);
+      await recordActivity('group_created');
+      showGroupPanel('group-panel-home');
+      setFeedback(`「${name}」を作成しました`, 'success');
+      if (nameInput) nameInput.value = '';
+    } catch (error) {
+      console.error('[Group] create failed', error);
+      setFeedback('グループの作成に失敗しました', 'error');
+    } finally {
+      button.disabled = false;
+      button.textContent = 'グループを作成';
+    }
+  }
+
+  async function joinExistingGroup() {
+    const idInput = document.getElementById('group-id-input');
+    const button = document.getElementById('group-join-btn');
+    const nextGroupId = idInput?.value.trim() || '';
+    if (!nextGroupId) {
+      setFeedback('グループIDを入力してください', 'error');
+      idInput?.focus();
+      return;
+    }
+    const api = await ensureFirebase();
+    if (!api?.joinGroup || !currentUid) {
+      setFeedback('Firebaseに接続できません', 'error');
+      return;
+    }
+    button.disabled = true;
+    button.textContent = '参加中…';
+    try {
+      await api.joinGroup(nextGroupId, { uid: currentUid, displayName });
+      await saveProfileGroup(nextGroupId);
+      await recordActivity('member_joined');
+      showGroupPanel('group-panel-home');
+      setFeedback('グループに参加しました', 'success');
+      if (idInput) idInput.value = '';
+    } catch (error) {
+      console.error('[Group] join failed', error);
+      setFeedback('グループが見つからないか、参加できませんでした', 'error');
+    } finally {
+      button.disabled = false;
+      button.textContent = 'グループに参加';
+    }
+  }
+
+  async function saveSettings() {
+    const button = document.getElementById('group-settings-save');
+    const api = await ensureFirebase();
+    if (!groupId || !api?.updateGroupSettings || groupData?.ownerUid !== currentUid) return;
+    const settings = {
+      shareLevel: document.querySelector('input[name="share-level"]:checked')?.value || 'progress',
+      notificationLevel: document.querySelector('input[name="notify-level"]:checked')?.value || 'normal',
+      unlockRule: document.querySelector('input[name="release-rule"]:checked')?.value || 'approval',
+      emergencyUnlock: document.getElementById('allow-emergency')?.checked ?? true,
     };
-    await saveGroupSettings(groupSettings);
-    saveBtn.textContent = '保存しました！';
-    setTimeout(() => { saveBtn.textContent = '設定を保存'; }, 1500);
+    button.disabled = true;
+    button.textContent = '保存中…';
+    try {
+      await api.updateGroupSettings(groupId, settings);
+      await recordActivity('settings_updated');
+      setFeedback('グループ設定を保存しました', 'success');
+    } catch (error) {
+      console.error('[Group] settings update failed', error);
+      setFeedback('グループ設定を保存できませんでした', 'error');
+    } finally {
+      button.disabled = false;
+      button.textContent = '設定を保存';
+    }
+  }
+
+  async function sendReaction(targetUid, targetName, emoji) {
+    if (!groupId || !targetUid || targetUid === currentUid) return;
+    await recordActivity('reaction', { targetUid, targetName, emoji });
+  }
+
+  function initButtons() {
+    document.querySelectorAll('.group-setup-tab').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.group-setup-tab').forEach((item) => item.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('group-create-form').hidden = tab.dataset.tab !== 'create';
+        document.getElementById('group-join-form').hidden = tab.dataset.tab !== 'join';
+      });
+    });
+    document.getElementById('group-create-btn')?.addEventListener('click', createNewGroup);
+    document.getElementById('group-join-btn')?.addEventListener('click', joinExistingGroup);
+    document.getElementById('group-settings-save')?.addEventListener('click', saveSettings);
+    document.getElementById('group-settings-btn')?.addEventListener('click', () => {
+      if (!groupId) {
+        showGroupPanel('group-panel-setup');
+        return;
+      }
+      applySettingsToForm();
+      showGroupPanel('group-panel-settings');
+    });
+    document.getElementById('group-settings-back')?.addEventListener('click', () => showGroupPanel('group-panel-home'));
+    document.getElementById('group-setup-back')?.addEventListener('click', () => showGroupPanel('group-panel-home'));
+    document.getElementById('group-join-or-create-btn')?.addEventListener('click', () => showGroupPanel('group-panel-setup'));
+  }
+
+  window.GroupUI = {
+    async setContext(context = {}) {
+      currentUid = context.uid || currentUid;
+      displayName = context.displayName || displayName;
+      const nextGroupId = context.groupId || '';
+      if (nextGroupId !== groupId) {
+        groupId = nextGroupId;
+        await subscribeCurrentGroup();
+      } else {
+        renderHeader();
+      }
+    },
+    sendReaction,
+    recordActivity,
+    getSettings() {
+      return effectiveSettings();
+    },
+    openSetup() {
+      showGroupPanel('group-panel-setup');
+    },
+  };
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    initButtons();
+    renderHeader();
+    renderActivities([]);
+    firebaseApi = await ensureFirebase();
+    if (!firebaseApi?.ensureAnonymousUser) return;
+    const user = await firebaseApi.ensureAnonymousUser();
+    currentUid = String(user.uid || '');
+    const stored = await new Promise((resolve) => {
+      if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+        chrome.storage.local.get(['firebaseDisplayName', 'firebaseGroupId'], resolve);
+      } else {
+        resolve({
+          firebaseDisplayName: localStorage.getItem('firebaseDisplayName') || '',
+          firebaseGroupId: localStorage.getItem('firebaseGroupId') || '',
+        });
+      }
+    });
+    displayName = stored.firebaseDisplayName || displayName;
+    groupId = stored.firebaseGroupId || '';
+    await subscribeCurrentGroup();
   });
-}
 
-// ===== ボタン類の初期化 =====
-function initGroupButtons() {
-  // ホームの設定ボタン
-  document.getElementById('group-settings-btn')?.addEventListener('click', () => {
-    showGroupPanel('group-panel-settings');
-  });
-
-  // 設定の戻るボタン
-  document.getElementById('group-settings-back')?.addEventListener('click', () => {
-    showGroupPanel('group-panel-home');
-  });
-
-  // セットアップの戻るボタン（グループ参加済みの場合）
-  document.getElementById('group-setup-back')?.addEventListener('click', () => {
-    showGroupPanel('group-panel-home');
-  });
-
-  // ホームの「グループ作成・参加」ボタン
-  document.getElementById('group-join-or-create-btn')?.addEventListener('click', () => {
-    showGroupPanel('group-panel-setup');
-  });
-}
-
-// ===== エントリポイント =====
-function initGroupUI() {
-  initGroupButtons();
-  initGroupSetupPanel();
-  initGroupSettingsPanel();
-
-  // ダミーデータでホームを描画
-  renderGroupHome(DUMMY_GROUP, DUMMY_MEMBERS, DUMMY_ACTIVITIES);
-}
-
-document.addEventListener('DOMContentLoaded', initGroupUI);
+  window.addEventListener('beforeunload', stopSubscriptions);
+})();

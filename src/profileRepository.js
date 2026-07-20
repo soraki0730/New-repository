@@ -17,9 +17,8 @@ export async function upsertUserProfile(uid, profile) {
       payload.displayName = '名前未設定';
     }
 
-    const groupId = typeof profile.groupId === 'string' ? profile.groupId.trim() : '';
-    if (groupId) {
-      payload.groupId = groupId;
+    if (Object.prototype.hasOwnProperty.call(profile, 'groupId')) {
+      payload.groupId = typeof profile.groupId === 'string' ? profile.groupId.trim() : '';
     }
 
     if (typeof profile.todayProgress === 'number') {

@@ -1824,6 +1824,12 @@ body {
   width: fit-content;
 }
 
+.group-id-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.78);
+  user-select: all;
+}
+
 .icon-btn {
   background: rgba(255,255,255,0.15);
   border: none;
@@ -2163,6 +2169,113 @@ body {
   background: #90a4ae;
   cursor: default;
 }
+
+.gr-deny-btn {
+  flex: 1;
+  padding: 8px;
+  background: #fff;
+  color: #c62828;
+  border: 1px solid #ef9a9a;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.gr-deny-btn:disabled {
+  color: #90a4ae;
+  border-color: #cfd8dc;
+  cursor: default;
+}
+
+.gr-unlock-card--approved { border-left-color: #43a047; }
+.gr-unlock-card--rejected { border-left-color: #90a4ae; opacity: 0.86; }
+
+.gr-request-result {
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.gr-request-result--approved { background: #e8f5e9; color: #2e7d32; }
+.gr-request-result--rejected { background: #eceff1; color: #546e7a; }
+
+.gr-emergency-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 16px;
+}
+
+.gr-emergency-card {
+  padding: 13px 14px;
+  border-radius: 12px;
+  background: #ffebee;
+  border: 1px solid #ef9a9a;
+  border-left: 5px solid #d32f2f;
+  color: #b71c1c;
+}
+
+.gr-emergency-card__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.gr-emergency-card p { margin: 7px 0 4px; font-size: 13px; line-height: 1.45; }
+.gr-emergency-card small { color: #c62828; }
+
+.gr-shared-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px solid var(--line);
+}
+
+.gr-shared-task {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.gr-shared-task strong { color: var(--ink); }
+
+.gr-shared-task__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.gr-shared-task__category {
+  flex: none;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.group-feedback {
+  margin: 10px 16px 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #e3f2fd;
+  color: #1565c0;
+  font-size: 13px;
+}
+
+.group-feedback[data-kind="success"] { background: #e8f5e9; color: #2e7d32; }
+.group-feedback[data-kind="error"] { background: #ffebee; color: #c62828; }
 
 /* ===== ACTIVITY FEED ===== */
 .activity-feed {

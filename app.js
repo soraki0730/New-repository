@@ -8,7 +8,6 @@ let navDate  = new Date();
 let currentUid = null;
 let currentProfile = { displayName: '', groupId: '' };
 let groupUnsubscribe = null;
-let unlockRequestUnsubscribe = null;
 let activeGroupId = '';
 let editingTaskId = null;
 let unlockRequestUiState = {
@@ -127,6 +126,31 @@ function getTodayProgressData(taskList = tasks) {
   const completedCount = todayTasks.filter((t) => t.done).length;
   const todayProgress = totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100);
   return { todayProgress, completedCount, totalCount };
+}
+
+function getSharedTasks(taskList = tasks) {
+  const settings = window.GroupUI?.getSettings?.() || { shareLevel: 'progress' };
+  const todayTasks = (taskList || []).filter((task) => task.date === getTodayDate());
+  if (settings.shareLevel === 'detail') {
+    return todayTasks.map((task) => ({
+      title: task.title || task.name || '',
+      category: task.category || '未分類',
+      progress: task.progress || 0,
+      done: Boolean(task.done)
+    }));
+  }
+  if (settings.shareLevel === 'category') {
+    const categories = new Map();
+    todayTasks.forEach((task) => {
+      const category = task.category || '未分類';
+      const current = categories.get(category) || { category, completedCount: 0, totalCount: 0 };
+      current.totalCount += 1;
+      if (task.done) current.completedCount += 1;
+      categories.set(category, current);
+    });
+    return [...categories.values()];
+  }
+  return [];
 }
 
 function formatRelativeTime(timestamp) {
@@ -274,6 +298,15 @@ function showMemberPopup(member) {
 
 function renderGroupMembers(members = []) {
   renderHomeUserRow(members);
+  const botMembers = members.filter((member) => member.isTestBot || member.role === 'bot');
+  if (botMembers.length > 0 && typeof _botCache !== 'undefined') {
+    botMembers.forEach((bot) => { _botCache[bot.uid] = bot; });
+    loadBotIds().then(async (ids) => {
+      const mergedIds = [...new Set([...ids, ...botMembers.map((bot) => bot.uid)])];
+      if (mergedIds.length !== ids.length) await saveBotIds(mergedIds);
+      await renderBotList();
+    });
+  }
 
   const list = document.getElementById('group-progress-list');
   const empty = document.getElementById('group-progress-empty');
@@ -363,6 +396,14 @@ async function syncTodayProgressToFirebase() {
   const progressData = getTodayProgressData(tasks);
   try {
     await firebaseApi.updateTodayProgress(currentUid, progressData);
+    if (activeGroupId && firebaseApi.updateGroupMemberProgress) {
+      await firebaseApi.updateGroupMemberProgress(activeGroupId, currentUid, {
+        ...progressData,
+        displayName: currentProfile.displayName,
+        studying: Boolean(getStudyingTask(tasks)),
+        sharedTasks: getSharedTasks(tasks)
+      });
+    }
     console.log(`[Group Share] progress updated: ${progressData.completedCount}/${progressData.totalCount} (${progressData.todayProgress}%)`);
     return progressData;
   } catch (error) {
@@ -371,79 +412,24 @@ async function syncTodayProgressToFirebase() {
   }
 }
 
-function renderGroupUnlockRequests(requests = []) {
-  const list  = document.getElementById('gr-unlock-list');
-  const badge = document.getElementById('gr-unlock-badge');
-  if (!list) return;
-
-  const pending = requests.filter((r) => r.status === 'pending');
-
-  if (badge) {
-    badge.textContent = pending.length > 0 ? String(pending.length) : '';
-    badge.hidden = pending.length === 0;
-  }
-
-  if (pending.length === 0) {
-    list.innerHTML = '<p class="gr-empty-note">現在、解除申請はありません</p>';
-    return;
-  }
-
-  list.innerHTML = '';
-  pending.forEach((req) => {
-    const card = document.createElement('div');
-    card.className = 'gr-unlock-card';
-
-    const name = req.requesterName || req.displayName || '不明';
-    const reason = req.reason || '理由なし';
-    const time = req.requestedAt?.toDate
-      ? req.requestedAt.toDate().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
-      : req.requestedAt
-        ? new Date(req.requestedAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
-        : '';
-
-    card.innerHTML = `
-      <div class="gr-unlock-card__header">
-        <span class="gr-unlock-icon">🔓</span>
-        <span class="gr-unlock-user">${name}さんが解除申請中</span>
-        ${time ? `<span class="gr-unlock-time">${time}</span>` : ''}
-      </div>
-      <p class="gr-unlock-reason">理由：${reason}</p>
-      <div class="gr-unlock-actions">
-        <button class="gr-approve-btn" type="button">承認する</button>
-      </div>
-    `;
-
-    card.querySelector('.gr-approve-btn').addEventListener('click', async () => {
-      const firebaseApi = await ensureFirebaseAvailable();
-      if (!firebaseApi?.approveUnlockRequest) return;
-      try {
-        await firebaseApi.approveUnlockRequest(activeGroupId, req.id, currentUid);
-        card.querySelector('.gr-approve-btn').textContent = '承認済み ✓';
-        card.querySelector('.gr-approve-btn').disabled = true;
-      } catch (e) {
-        console.error('[Unlock] approve failed', e);
-        alert('承認に失敗しました');
-      }
-    });
-
-    list.appendChild(card);
-  });
-}
-
 async function subscribeToGroup(groupId) {
   if (groupUnsubscribe) {
     groupUnsubscribe();
     groupUnsubscribe = null;
   }
-  if (unlockRequestUnsubscribe) {
-    unlockRequestUnsubscribe();
-    unlockRequestUnsubscribe = null;
-  }
-
   activeGroupId = groupId || '';
+  window.GroupUI?.setContext({
+    groupId: activeGroupId,
+    uid: currentUid,
+    displayName: currentProfile.displayName
+  });
+  window.GroupRoomUI?.setContext({
+    groupId: activeGroupId,
+    uid: currentUid,
+    displayName: currentProfile.displayName
+  });
   if (!groupId) {
     renderGroupMembers([]);
-    renderGroupUnlockRequests([]);
     return;
   }
 
@@ -459,13 +445,6 @@ async function subscribeToGroup(groupId) {
     }
   );
 
-  if (firebaseApi?.subscribeUnlockRequests) {
-    unlockRequestUnsubscribe = firebaseApi.subscribeUnlockRequests(
-      groupId,
-      (requests) => { renderGroupUnlockRequests(requests); },
-      (error) => { console.error('[Unlock] subscribe error', error); }
-    );
-  }
 }
 
 async function saveProfileAndJoinGroup() {
@@ -479,10 +458,26 @@ async function saveProfileAndJoinGroup() {
   const displayName = (displayNameInput?.value || '').trim() || '名前未設定';
   const groupId = (groupIdInput?.value || '').trim();
 
+  if (groupId && firebaseApi.joinGroup) {
+    const progressData = getTodayProgressData(tasks);
+    const memberData = {
+      uid: currentUid,
+      displayName,
+      ...progressData,
+      studying: Boolean(getStudyingTask(tasks)),
+      sharedTasks: getSharedTasks(tasks)
+    };
+    try {
+      await firebaseApi.joinGroup(groupId, memberData);
+    } catch (joinError) {
+      // 既存ownerはroleをmemberに変更できないため、進捗更新へフォールバックする
+      if (!firebaseApi.updateGroupMemberProgress) throw joinError;
+      await firebaseApi.updateGroupMemberProgress(groupId, currentUid, memberData);
+    }
+  }
   currentProfile = { displayName, groupId };
   saveProfileSettings(displayName, groupId);
   renderProfileSummary();
-
   await firebaseApi.upsertUserProfile(currentUid, { displayName, groupId });
   await syncTodayProgressToFirebase();
   await subscribeToGroup(groupId);
@@ -505,7 +500,12 @@ async function initializeGroupSharing() {
   }
 
   currentUid = uid;
-  await saveProfileAndJoinGroup();
+  try {
+    await saveProfileAndJoinGroup();
+  } catch (error) {
+    console.warn('[Group Share] saved group could not be restored', error);
+    await subscribeToGroup(currentProfile.groupId);
+  }
   await syncTodayProgressToFirebase();
 }
 
@@ -658,8 +658,9 @@ function useChromeStorage() {
 }
 
 function normalizeUnlockRequestState(state = {}) {
+  const allowedStatuses = ['idle', 'pending', 'approved', 'rejected', 'emergency', 'reasoned'];
   return {
-    status: state?.status === 'pending' || state?.status === 'emergency' ? state.status : 'idle',
+    status: allowedStatuses.includes(state?.status) ? state.status : 'idle',
     reason: typeof state?.reason === 'string' ? state.reason : '',
     requestedAt: typeof state?.requestedAt === 'string' ? state.requestedAt : '',
     requestId: typeof state?.requestId === 'string' ? state.requestId : '',
@@ -712,24 +713,47 @@ function renderUnlockRequestUi() {
   if (!card || !pill || !summary || !submitBtn || !emergencyBtn) return;
 
   const state = normalizeUnlockRequestState(unlockRequestUiState);
+  const settings = window.GroupUI?.getSettings?.() || { unlockRule: 'approval', emergencyUnlock: true };
   const isPending = state.status === 'pending';
   const isEmergency = state.status === 'emergency';
+  const isApproved = state.status === 'approved';
+  const isRejected = state.status === 'rejected';
+  const isReasoned = state.status === 'reasoned';
 
-  pill.textContent = isPending ? '承認待ち' : isEmergency ? '緊急解除済み' : '未申請';
+  pill.textContent = isPending ? '承認待ち'
+    : isApproved ? '承認済み'
+      : isRejected ? '却下済み'
+        : isEmergency ? '緊急解除済み'
+          : isReasoned ? '理由を記録済み'
+            : '未申請';
   pill.classList.toggle('is-pending', isPending);
   pill.classList.toggle('is-emergency', isEmergency);
 
   if (isPending) {
     summary.textContent = '解除申請を出しました。studyModeはONのままです。';
+  } else if (isApproved) {
+    summary.textContent = '解除申請が承認され、studyModeをOFFにしました。';
+  } else if (isRejected) {
+    summary.textContent = '解除申請は却下されました。studyModeはONのままです。';
   } else if (isEmergency) {
     summary.textContent = state.reason ? `緊急解除済み: ${state.reason}` : '緊急解除済みです。';
+  } else if (isReasoned) {
+    summary.textContent = state.reason ? `解除理由: ${state.reason}` : '理由を記録して解除しました。';
   } else {
-    summary.textContent = 'studyModeをOFFにする前に、解除理由を入力して申請できます。';
+    summary.textContent = settings.unlockRule === 'free'
+      ? 'このグループではstudyModeを自由に解除できます。'
+      : settings.unlockRule === 'reason'
+        ? '解除理由を記録してstudyModeをOFFにできます。'
+        : 'studyModeをOFFにするには、理由を入力してメンバーへ申請します。';
   }
 
-  submitBtn.textContent = isPending ? '申請をやり直す' : '解除申請';
+  submitBtn.textContent = isPending ? '申請をやり直す'
+    : settings.unlockRule === 'free' ? '解除する'
+      : settings.unlockRule === 'reason' ? '理由を入力して解除'
+        : '解除申請';
   submitBtn.disabled = false;
   emergencyBtn.disabled = false;
+  emergencyBtn.hidden = settings.emergencyUnlock === false;
 }
 
 async function syncStudyModeUi() {
@@ -745,6 +769,13 @@ async function openUnlockRequestModal(reason = '') {
   const textarea = document.getElementById('unlock-request-reason');
   if (!modal || !textarea) return;
   textarea.value = reason || unlockRequestUiState.reason || '';
+  const settings = window.GroupUI?.getSettings?.() || { unlockRule: 'approval', emergencyUnlock: true };
+  const submitButton = document.getElementById('unlock-request-modal-submit');
+  const emergencyButton = document.getElementById('unlock-request-modal-emergency');
+  if (submitButton) {
+    submitButton.textContent = settings.unlockRule === 'reason' ? '理由を記録して解除' : '申請する';
+  }
+  if (emergencyButton) emergencyButton.hidden = settings.emergencyUnlock === false;
   modal.classList.add('active');
   setTimeout(() => textarea.focus(), 50);
 }
@@ -758,43 +789,55 @@ function closeUnlockRequestModal() {
 
 async function submitUnlockRequest(reason = '') {
   const trimmedReason = (reason || '').trim();
+  if (!trimmedReason) {
+    document.getElementById('unlock-request-reason')?.focus();
+    return false;
+  }
+  const groupId = (currentProfile.groupId || '').trim();
+  const summary = document.getElementById('unlock-request-summary');
+  if (!groupId) {
+    if (summary) summary.textContent = '解除申請にはグループへの参加が必要です。';
+    return false;
+  }
+  if (!window.studyFirebase?.createUnlockRequest) {
+    if (summary) summary.textContent = 'Firebaseに接続できないため申請を送信できません。';
+    return false;
+  }
   const nextState = {
     ...normalizeUnlockRequestState(unlockRequestUiState),
     status: 'pending',
-    reason: trimmedReason || '理由未記入',
+    reason: trimmedReason,
     requestedAt: new Date().toISOString(),
     lastUpdated: Date.now(),
   };
 
-  await saveUnlockRequestUiState(nextState);
   await saveStudyMode(true);
-  renderUnlockRequestUi();
-  closeUnlockRequestModal();
 
   try {
-    const groupId = (currentProfile.groupId || '').trim();
-    if (groupId && window.studyFirebase && typeof window.studyFirebase.createUnlockRequest === 'function') {
-      const result = await window.studyFirebase.createUnlockRequest(groupId, {
-        requesterUid: currentUid || undefined,
-        requesterName: currentProfile.displayName || '匿名',
-        reason: nextState.reason,
-      });
-      await saveUnlockRequestUiState({
-        ...nextState,
-        requestId: result?.requestId || nextState.requestId,
-        lastUpdated: Date.now(),
-      });
-      renderUnlockRequestUi();
-      return true;
-    }
+    const result = await window.studyFirebase.createUnlockRequest(groupId, {
+      requesterUid: currentUid || undefined,
+      requesterName: currentProfile.displayName || '匿名',
+      reason: nextState.reason,
+    });
+    await saveUnlockRequestUiState({
+      ...nextState,
+      requestId: result?.requestId || '',
+      lastUpdated: Date.now(),
+    });
+    await window.GroupUI?.recordActivity('unlock_requested', { requestId: result?.requestId || '' });
+    renderUnlockRequestUi();
+    closeUnlockRequestModal();
+    return true;
   } catch (error) {
-    // グループ未設定や Firebase 権限エラーでも UI だけは維持する
+    console.error('[UnlockRequest] submit failed', error);
+    if (summary) summary.textContent = '解除申請の送信に失敗しました。接続とグループ設定を確認してください。';
   }
-
-  return true;
+  return false;
 }
 
 async function emergencyUnlock(reason = '') {
+  const settings = window.GroupUI?.getSettings?.() || { emergencyUnlock: true };
+  if (settings.emergencyUnlock === false) return false;
   const trimmedReason = (reason || '').trim();
   const nextState = {
     ...normalizeUnlockRequestState(unlockRequestUiState),
@@ -818,11 +861,46 @@ async function emergencyUnlock(reason = '') {
         reason: nextState.reason,
         progressAtUnlock: getTodayProgressData().todayProgress,
       });
+      await window.GroupUI?.recordActivity('emergency_unlock');
     }
   } catch (error) {
     // グループ未設定や Firebase 権限エラーでも UI だけは維持する
   }
 
+  return true;
+}
+
+async function reasonUnlock(reason = '') {
+  const trimmedReason = (reason || '').trim();
+  if (!trimmedReason) {
+    document.getElementById('unlock-request-reason')?.focus();
+    return false;
+  }
+  const nextState = {
+    ...normalizeUnlockRequestState(unlockRequestUiState),
+    status: 'reasoned',
+    reason: trimmedReason,
+    requestedAt: new Date().toISOString(),
+    lastUpdated: Date.now(),
+  };
+  await saveUnlockRequestUiState(nextState);
+  await saveStudyMode(false);
+  renderUnlockRequestUi();
+  closeUnlockRequestModal();
+  try {
+    const groupId = (currentProfile.groupId || '').trim();
+    if (groupId && window.studyFirebase?.createReasonUnlockHistory) {
+      await window.studyFirebase.createReasonUnlockHistory(groupId, {
+        uid: currentUid || undefined,
+        displayName: currentProfile.displayName || '匿名',
+        reason: trimmedReason,
+        progressAtUnlock: getTodayProgressData().todayProgress,
+      });
+      await window.GroupUI?.recordActivity('reason_unlock');
+    }
+  } catch (error) {
+    console.error('[UnlockRequest] reason history save failed', error);
+  }
   return true;
 }
 
@@ -1341,6 +1419,34 @@ document.addEventListener("DOMContentLoaded", async () => {
     btn.addEventListener("click", () => switchView(btn.dataset.view));
   });
 
+  // ホーム上部の追加・通知から、実データのグループ画面へ移動
+  document.querySelector('.user-slot--add')?.addEventListener('click', () => {
+    switchView('group');
+    window.GroupUI?.openSetup();
+  });
+  document.querySelector('.bell-btn')?.addEventListener('click', () => {
+    switchView('group');
+    document.getElementById('gr-unlock-list')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+
+  window.addEventListener('study-group-changed', async (event) => {
+    const nextGroupId = event.detail?.groupId || '';
+    currentProfile = {
+      displayName: event.detail?.displayName || currentProfile.displayName,
+      groupId: nextGroupId
+    };
+    setProfileFormValues(currentProfile);
+    renderProfileSummary();
+    _botCache = {};
+    await renderBotList();
+    await subscribeToGroup(nextGroupId);
+    await syncTodayProgressToFirebase();
+  });
+  window.addEventListener('study-group-settings-changed', async () => {
+    renderUnlockRequestUi();
+    await syncTodayProgressToFirebase();
+  });
+
   // マイページ タブ切替
   document.getElementById("tab-day").addEventListener("click", () => {
     tasksTab = 'day';
@@ -1387,6 +1493,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     // トグル操作 → OFFは即時にしない。理由入力モーダルを開く
     studyToggle.addEventListener("change", async () => {
       if (!studyToggle.checked) {
+        const settings = window.GroupUI?.getSettings?.() || { unlockRule: 'approval' };
+        if (settings.unlockRule === 'free') {
+          await saveStudyMode(false);
+          await saveUnlockRequestUiState({ status: 'idle', lastUpdated: Date.now() });
+          renderUnlockRequestUi();
+          return;
+        }
         studyToggle.checked = true;
         await openUnlockRequestModal();
         return;
@@ -1397,15 +1510,29 @@ document.addEventListener("DOMContentLoaded", async () => {
     // popup など他からの変更 → トグルを最新値に更新
     if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.onChanged) {
       chrome.storage.onChanged.addListener((changes, area) => {
-        if (area !== "local" || !Object.prototype.hasOwnProperty.call(changes, "studyMode")) return;
-        const pendingState = normalizeUnlockRequestState(unlockRequestUiState);
-        studyToggle.checked = pendingState.status === 'pending' ? true : Boolean(changes.studyMode.newValue);
+        if (area !== "local") return;
+        if (Object.prototype.hasOwnProperty.call(changes, UNLOCK_REQUEST_STATE_KEY)) {
+          unlockRequestUiState = normalizeUnlockRequestState(changes[UNLOCK_REQUEST_STATE_KEY].newValue);
+          renderUnlockRequestUi();
+        }
+        if (Object.prototype.hasOwnProperty.call(changes, "studyMode")) {
+          const pendingState = normalizeUnlockRequestState(unlockRequestUiState);
+          studyToggle.checked = pendingState.status === 'pending' ? true : Boolean(changes.studyMode.newValue);
+        }
       });
     }
   }
 
   // 解除申請 UI
   document.getElementById("unlock-request-submit")?.addEventListener("click", async () => {
+    const settings = window.GroupUI?.getSettings?.() || { unlockRule: 'approval' };
+    if (settings.unlockRule === 'free') {
+      await saveStudyMode(false);
+      await saveUnlockRequestUiState({ status: 'idle', lastUpdated: Date.now() });
+      await syncStudyModeUi();
+      renderUnlockRequestUi();
+      return;
+    }
     await openUnlockRequestModal();
   });
   document.getElementById("unlock-request-emergency")?.addEventListener("click", async () => {
@@ -1414,7 +1541,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("unlock-request-modal-cancel")?.addEventListener("click", closeUnlockRequestModal);
   document.getElementById("unlock-request-modal-submit")?.addEventListener("click", async () => {
     const reason = document.getElementById("unlock-request-reason")?.value || '';
-    await submitUnlockRequest(reason);
+    const settings = window.GroupUI?.getSettings?.() || { unlockRule: 'approval' };
+    if (settings.unlockRule === 'reason') await reasonUnlock(reason);
+    else await submitUnlockRequest(reason);
   });
   document.getElementById("unlock-request-modal-emergency")?.addEventListener("click", async () => {
     const reason = document.getElementById("unlock-request-reason")?.value || '';
@@ -1431,8 +1560,22 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderBlockUrls();
 
   // プロフィール・グループ共有
-  document.getElementById('profile-save-btn').addEventListener('click', async () => {
-    await saveProfileAndJoinGroup();
+  document.getElementById('profile-save-btn').addEventListener('click', async (event) => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    button.textContent = '保存中…';
+    try {
+      await saveProfileAndJoinGroup();
+      button.textContent = '保存しました';
+    } catch (error) {
+      console.error('[Group Share] profile save failed', error);
+      button.textContent = '保存できませんでした';
+    } finally {
+      setTimeout(() => {
+        button.disabled = false;
+        button.textContent = '保存する';
+      }, 1200);
+    }
   });
 
   await initializeGroupSharing();
@@ -1460,22 +1603,28 @@ const BOT_IDS_KEY = 'testBotIds';
 let _botCache = {};
 let _editingBotId = null;
 
+function currentBotIdsKey() {
+  return `${BOT_IDS_KEY}:${currentProfile.groupId || activeGroupId || 'none'}`;
+}
+
 async function loadBotIds() {
+  const storageKey = currentBotIdsKey();
   return new Promise((resolve) => {
     if (typeof chrome !== 'undefined' && chrome.storage?.local) {
-      chrome.storage.local.get([BOT_IDS_KEY], (res) => resolve(res?.[BOT_IDS_KEY] || []));
+      chrome.storage.local.get([storageKey], (res) => resolve(res?.[storageKey] || []));
     } else {
-      try { resolve(JSON.parse(localStorage.getItem(BOT_IDS_KEY) || '[]')); } catch { resolve([]); }
+      try { resolve(JSON.parse(localStorage.getItem(storageKey) || '[]')); } catch { resolve([]); }
     }
   });
 }
 
 async function saveBotIds(ids) {
+  const storageKey = currentBotIdsKey();
   return new Promise((resolve) => {
     if (typeof chrome !== 'undefined' && chrome.storage?.local) {
-      chrome.storage.local.set({ [BOT_IDS_KEY]: ids }, resolve);
+      chrome.storage.local.set({ [storageKey]: ids }, resolve);
     } else {
-      localStorage.setItem(BOT_IDS_KEY, JSON.stringify(ids));
+      localStorage.setItem(storageKey, JSON.stringify(ids));
       resolve();
     }
   });
@@ -1531,8 +1680,8 @@ async function addBot() {
 
   // Firebase書き込みはバックグラウンド（失敗しても続行）
   ensureFirebaseAvailable().then((firebaseApi) => {
-    if (firebaseApi?.joinGroup) {
-      return firebaseApi.joinGroup(groupId, { uid: botId, ...defaults });
+    if (firebaseApi?.upsertTestBot) {
+      return firebaseApi.upsertTestBot(groupId, { uid: botId, ...defaults });
     }
   }).catch((e) => console.warn('[BOT] Firebase write failed', e));
 }
@@ -1575,7 +1724,7 @@ async function saveBotEdit() {
   const groupId = currentProfile.groupId || activeGroupId;
   if (groupId) {
     ensureFirebaseAvailable().then((firebaseApi) => {
-      if (firebaseApi?.joinGroup) return firebaseApi.joinGroup(groupId, { uid: botId, ...data });
+      if (firebaseApi?.upsertTestBot) return firebaseApi.upsertTestBot(groupId, { uid: botId, ...data });
     }).catch((e) => console.warn('[BOT] Firebase write failed', e));
   }
 }

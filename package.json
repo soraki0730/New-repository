@@ -4,7 +4,7 @@
   "description": "学習タスク管理とサイトブロックを組み合わせたChrome拡張機能",
   "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --test tests/static-smoke.test.js",
     "build:firebase": "esbuild src/firebase-entry.js --bundle --format=iife --platform=browser --outfile=dist/firebase-entry.js"
   },
   "repository": {

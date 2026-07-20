@@ -13630,7 +13630,7 @@
      * @param {number} [limit=0] the limit
      * @returns {string[]} the split strings
      */
-    split(input, limit = 0) {
+    split(input, limit2 = 0) {
       const m = this.matcher(input);
       const result = [];
       let emptiesSkipped = 0;
@@ -13640,11 +13640,11 @@
           last = m.end();
           continue;
         }
-        if (limit > 0 && result.length === limit - 1) {
+        if (limit2 > 0 && result.length === limit2 - 1) {
           break;
         }
         if (last === m.start()) {
-          if (limit === 0) {
+          if (limit2 === 0) {
             emptiesSkipped += 1;
             last = m.end();
             continue;
@@ -13658,14 +13658,14 @@
         result.push(m.substring(last, m.start()));
         last = m.end();
       }
-      if (limit === 0 && last !== m.inputLength()) {
+      if (limit2 === 0 && last !== m.inputLength()) {
         while (emptiesSkipped > 0) {
           result.push("");
           emptiesSkipped -= 1;
         }
         result.push(m.substring(last, m.inputLength()));
       }
-      if (limit !== 0 || result.length === 0) {
+      if (limit2 !== 0 || result.length === 0) {
         result.push(m.substring(last, m.inputLength()));
       }
       return result;
@@ -14433,6 +14433,9 @@
       }
     }
     return e;
+  }
+  function __PRIVATE_validatePositiveNumber(e, t) {
+    if (t <= 0) throw new FirestoreError(D.INVALID_ARGUMENT, `Function ${e}() requires a positive number, but it was: ${t}.`);
   }
   function property(e, t) {
     const n = {
@@ -27214,6 +27217,32 @@ This typically indicates that your device does not have a healthy Internet conne
       i.gc(), e.asyncQueue.enqueueAndForget((async () => __PRIVATE_eventManagerUnlisten(await __PRIVATE_getEventManager(e), s)));
     };
   }
+  function __PRIVATE_firestoreClientGetDocumentViaSnapshotListener(e, t, n = {}) {
+    const r = new __PRIVATE_Deferred();
+    return e.asyncQueue.enqueueAndForget((async () => (function __PRIVATE_readDocumentViaSnapshotListener(e2, t2, n2, r2, i) {
+      const s = new __PRIVATE_AsyncObserver({
+        next: (o) => {
+          s.gc(), t2.enqueueAndForget((() => __PRIVATE_eventManagerUnlisten(e2, _)));
+          const a = o.docs.has(n2);
+          !a && o.fromCache ? (
+            // TODO(dimond): If we're online and the document doesn't
+            // exist then we resolve with a doc.exists set to false. If
+            // we're offline however, we reject the Promise in this
+            // case. Two options: 1) Cache the negative response from
+            // the server so we can deliver that even when you're
+            // offline 2) Actually reject the Promise in the online case
+            // if the document doesn't exist.
+            i.reject(new FirestoreError(D.UNAVAILABLE, "Failed to get document because the client is offline."))
+          ) : a && o.fromCache && r2 && "server" === r2.source ? i.reject(new FirestoreError(D.UNAVAILABLE, 'Failed to get document from server. (However, this document does exist in the local cache. Run again without setting source to "server" to retrieve the cached document.)')) : i.resolve(o);
+        },
+        error: (e3) => i.reject(e3)
+      }), _ = new __PRIVATE_QueryListener(__PRIVATE_newQueryForPath(n2.path), s, {
+        includeMetadataChanges: true,
+        waitForSyncWhenOnline: true
+      });
+      return __PRIVATE_eventManagerListen(e2, _);
+    })(await __PRIVATE_getEventManager(e), e.asyncQueue, t, n, r))), r.promise;
+  }
   function __PRIVATE_firestoreClientWrite(e, t) {
     const n = new __PRIVATE_Deferred();
     return e.asyncQueue.enqueueAndForget((async () => __PRIVATE_syncEngineWrite(await __PRIVATE_getSyncEngine(e), t, n))), n.promise;
@@ -27728,6 +27757,28 @@ This typically indicates that your device does not have a healthy Internet conne
     const n = e, r = __PRIVATE_fieldPathFromArgument("orderBy", t);
     return QueryOrderByConstraint._create(r, n);
   }
+  var QueryLimitConstraint = class _QueryLimitConstraint extends QueryConstraint {
+    /**
+     * @internal
+     */
+    constructor(t, e, n) {
+      super(), this.type = t, this._limit = e, this._limitType = n;
+    }
+    static _create(t, e, n) {
+      return new _QueryLimitConstraint(t, e, n);
+    }
+    _apply(t) {
+      return new Query(t.firestore, t.converter, __PRIVATE_queryWithLimit(t._query, this._limit, this._limitType));
+    }
+  };
+  function limit(t) {
+    return __PRIVATE_validatePositiveNumber("limit", t), QueryLimitConstraint._create(
+      "limit",
+      t,
+      "F"
+      /* LimitType.First */
+    );
+  }
   function __PRIVATE_parseDocumentIdValue(t, e, n) {
     if ("string" == typeof (n = getModularInstance(n))) {
       if ("" === n) throw new FirestoreError(D.INVALID_ARGUMENT, "Invalid query. When querying with documentId(), you must provide a valid document ID, but it was an empty string.");
@@ -28057,6 +28108,11 @@ This typically indicates that your device does not have a healthy Internet conne
     if ((t = getModularInstance(t)).firestore !== e) throw new FirestoreError(D.INVALID_ARGUMENT, "Provided document reference is from a different Firestore instance.");
     return t;
   }
+  function getDoc(t) {
+    t = __PRIVATE_cast(t, DocumentReference);
+    const e = __PRIVATE_cast(t.firestore, Firestore), n = ensureFirestoreConfigured(e);
+    return __PRIVATE_firestoreClientGetDocumentViaSnapshotListener(n, t._key).then(((n2) => __PRIVATE_convertToDocSnapshot(e, t, n2)));
+  }
   function setDoc(t, e, n) {
     t = __PRIVATE_cast(t, DocumentReference);
     const r = __PRIVATE_cast(t.firestore, Firestore), s = __PRIVATE_applyFirestoreDataConverter(t.converter, e, n), o = __PRIVATE_newUserDataReader(r);
@@ -28073,6 +28129,10 @@ This typically indicates that your device does not have a healthy Internet conne
   }
   function deleteDoc(t) {
     return executeWrite(__PRIVATE_cast(t.firestore, Firestore), [new __PRIVATE_DeleteMutation(t._key, Precondition.none())]);
+  }
+  function addDoc(t, e) {
+    const n = __PRIVATE_cast(t.firestore, Firestore), r = doc(t), s = __PRIVATE_applyFirestoreDataConverter(t.converter, e), o = __PRIVATE_newUserDataReader(t.firestore);
+    return executeWrite(n, [__PRIVATE_parseSetData(o, "addDoc", r._key, s, null !== t.converter, {}).toMutation(r._key, Precondition.exists(false))]).then((() => r));
   }
   function onSnapshot(t, ...e) {
     t = getModularInstance(t);
@@ -28253,6 +28313,16 @@ This typically indicates that your device does not have a healthy Internet conne
       onError
     );
   }
+  async function upsertSettings(uid, settings) {
+    const ref = doc(db, "users", uid, "settings", "main");
+    await setDoc(ref, { ...settings, updatedAt: serverTimestamp() }, { merge: true });
+  }
+  function subscribeSettings(uid, onSettings, onError) {
+    const ref = doc(db, "users", uid, "settings", "main");
+    return onSnapshot(ref, (snapshot) => {
+      if (snapshot.exists()) onSettings(snapshot.data());
+    }, onError);
+  }
 
   // src/profileRepository.js
   async function upsertUserProfile(uid, profile) {
@@ -28268,9 +28338,8 @@ This typically indicates that your device does not have a healthy Internet conne
       } else {
         payload.displayName = "\u540D\u524D\u672A\u8A2D\u5B9A";
       }
-      const groupId = typeof profile.groupId === "string" ? profile.groupId.trim() : "";
-      if (groupId) {
-        payload.groupId = groupId;
+      if (Object.prototype.hasOwnProperty.call(profile, "groupId")) {
+        payload.groupId = typeof profile.groupId === "string" ? profile.groupId.trim() : "";
       }
       if (typeof profile.todayProgress === "number") {
         payload.todayProgress = profile.todayProgress;
@@ -28314,6 +28383,17 @@ This typically indicates that your device does not have a healthy Internet conne
   function normalizeNumber(value) {
     return typeof value === "number" && Number.isFinite(value) ? value : 0;
   }
+  function normalizeSharedTasks(value) {
+    if (!Array.isArray(value)) return [];
+    return value.slice(0, 50).map((item) => ({
+      title: normalizeText(item?.title),
+      category: normalizeText(item?.category, "\u672A\u5206\u985E"),
+      progress: Math.max(0, Math.min(100, normalizeNumber(item?.progress))),
+      done: Boolean(item?.done),
+      completedCount: normalizeNumber(item?.completedCount),
+      totalCount: normalizeNumber(item?.totalCount)
+    }));
+  }
   function buildMemberPayload(member, role) {
     const uid = normalizeText(member?.uid);
     if (!uid) throw new Error("uid is required");
@@ -28325,6 +28405,7 @@ This typically indicates that your device does not have a healthy Internet conne
       completedCount: normalizeNumber(member?.completedCount),
       totalCount: normalizeNumber(member?.totalCount),
       studying: Boolean(member?.studying),
+      sharedTasks: normalizeSharedTasks(member?.sharedTasks),
       lastActiveAt: serverTimestamp()
     };
   }
@@ -28368,6 +28449,110 @@ This typically indicates that your device does not have a healthy Internet conne
     await writeBatch(db).set(doc(db, "groups", normalizedGroupId, "members", payload.uid), payload, { merge: true }).commit();
     return { groupId: normalizedGroupId, uid: payload.uid };
   }
+  async function updateGroupMemberProgress(groupId, uid, progress = {}) {
+    const normalizedGroupId = normalizeText(groupId);
+    const normalizedUid = normalizeText(uid);
+    if (!normalizedGroupId || !normalizedUid) throw new Error("groupId and uid are required");
+    await updateDoc(doc(db, "groups", normalizedGroupId, "members", normalizedUid), {
+      displayName: normalizeText(progress.displayName, "Anonymous"),
+      todayProgress: normalizeNumber(progress.todayProgress),
+      completedCount: normalizeNumber(progress.completedCount),
+      totalCount: normalizeNumber(progress.totalCount),
+      studying: Boolean(progress.studying),
+      sharedTasks: normalizeSharedTasks(progress.sharedTasks),
+      lastActiveAt: serverTimestamp()
+    });
+    return { groupId: normalizedGroupId, uid: normalizedUid };
+  }
+  async function upsertTestBot(groupId, ownerUid, bot = {}) {
+    const normalizedGroupId = normalizeText(groupId);
+    const normalizedOwnerUid = normalizeText(ownerUid);
+    const botUid = normalizeText(bot.uid);
+    if (!normalizedGroupId || !normalizedOwnerUid || !botUid) {
+      throw new Error("groupId, ownerUid and bot uid are required");
+    }
+    const payload = {
+      ...buildMemberPayload(bot, "bot"),
+      isTestBot: true,
+      createdBy: normalizedOwnerUid
+    };
+    await writeBatch(db).set(doc(db, "groups", normalizedGroupId, "members", botUid), payload, { merge: true }).commit();
+    return { groupId: normalizedGroupId, uid: botUid };
+  }
+  async function getGroup(groupId) {
+    const normalizedGroupId = normalizeText(groupId);
+    if (!normalizedGroupId) throw new Error("groupId is required");
+    const snapshot = await getDoc(doc(db, "groups", normalizedGroupId));
+    if (!snapshot.exists()) throw new Error("group not found");
+    return { id: snapshot.id, ...snapshot.data() };
+  }
+  function subscribeGroup(groupId, onChange, onError) {
+    const normalizedGroupId = normalizeText(groupId);
+    if (!normalizedGroupId) {
+      onChange(null);
+      return () => {
+      };
+    }
+    return onSnapshot(
+      doc(db, "groups", normalizedGroupId),
+      (snapshot) => onChange(snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null),
+      onError
+    );
+  }
+  async function updateGroupSettings(groupId, settings = {}) {
+    const normalizedGroupId = normalizeText(groupId);
+    if (!normalizedGroupId) throw new Error("groupId is required");
+    const payload = {
+      shareLevel: normalizeText(settings.shareLevel, DEFAULT_GROUP_SETTINGS.shareLevel),
+      unlockRule: normalizeText(settings.unlockRule || settings.releaseRule, DEFAULT_GROUP_SETTINGS.unlockRule),
+      emergencyUnlock: settings.emergencyUnlock ?? settings.allowEmergency ?? DEFAULT_GROUP_SETTINGS.emergencyUnlock,
+      notificationLevel: normalizeText(
+        settings.notificationLevel || settings.notifyLevel,
+        DEFAULT_GROUP_SETTINGS.notificationLevel
+      )
+    };
+    await updateDoc(doc(db, "groups", normalizedGroupId), {
+      settings: payload,
+      updatedAt: serverTimestamp()
+    });
+    return payload;
+  }
+  async function createGroupActivity(groupId, activity = {}) {
+    const normalizedGroupId = normalizeText(groupId);
+    const actorUid = normalizeText(activity.actorUid || activity.uid);
+    if (!normalizedGroupId) throw new Error("groupId is required");
+    if (!actorUid) throw new Error("actorUid is required");
+    const activityRef = await addDoc(collection(db, "groups", normalizedGroupId, "activities"), {
+      actorUid,
+      actorName: normalizeText(activity.actorName || activity.displayName, "Anonymous"),
+      type: normalizeText(activity.type, "update"),
+      targetUid: normalizeText(activity.targetUid),
+      targetName: normalizeText(activity.targetName),
+      emoji: normalizeText(activity.emoji),
+      taskName: normalizeText(activity.taskName),
+      requestId: normalizeText(activity.requestId),
+      createdAt: serverTimestamp()
+    });
+    return { groupId: normalizedGroupId, activityId: activityRef.id };
+  }
+  function subscribeGroupActivities(groupId, onChange, onError) {
+    const normalizedGroupId = normalizeText(groupId);
+    if (!normalizedGroupId) {
+      onChange([]);
+      return () => {
+      };
+    }
+    const activitiesQuery = query(
+      collection(db, "groups", normalizedGroupId, "activities"),
+      orderBy("createdAt", "desc"),
+      limit(30)
+    );
+    return onSnapshot(
+      activitiesQuery,
+      (snapshot) => onChange(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))),
+      onError
+    );
+  }
   async function deleteGroupMember(groupId, uid) {
     const normalizedGroupId = normalizeText(groupId);
     const normalizedUid = normalizeText(uid);
@@ -28395,10 +28580,13 @@ This typically indicates that your device does not have a healthy Internet conne
             uid: data?.uid || docSnapshot.id,
             displayName: data?.displayName || "Anonymous",
             role: data?.role || "member",
+            isTestBot: Boolean(data?.isTestBot),
+            createdBy: data?.createdBy || "",
             todayProgress: normalizeNumber(data?.todayProgress),
             completedCount: normalizeNumber(data?.completedCount),
             totalCount: normalizeNumber(data?.totalCount),
             studying: Boolean(data?.studying),
+            sharedTasks: normalizeSharedTasks(data?.sharedTasks),
             lastActiveAt: data?.lastActiveAt || null
           };
         });
@@ -28441,7 +28629,8 @@ This typically indicates that your device does not have a healthy Internet conne
     }
     const requestsQuery = query(
       collection(db, "groups", normalizedGroupId, "unlockRequests"),
-      orderBy("requestedAt", "desc")
+      orderBy("requestedAt", "desc"),
+      limit(20)
     );
     return onSnapshot(
       requestsQuery,
@@ -28473,6 +28662,42 @@ This typically indicates that your device does not have a healthy Internet conne
       approvedBy: normalizedApproverUid
     };
   }
+  async function rejectUnlockRequest(groupId, requestId, rejecterUid) {
+    const normalizedGroupId = normalizeText2(groupId);
+    const normalizedRequestId = normalizeText2(requestId);
+    const normalizedRejecterUid = normalizeText2(rejecterUid);
+    if (!normalizedGroupId) throw new Error("groupId is required");
+    if (!normalizedRequestId) throw new Error("requestId is required");
+    if (!normalizedRejecterUid) throw new Error("rejecterUid is required");
+    await updateDoc(doc(db, "groups", normalizedGroupId, "unlockRequests", normalizedRequestId), {
+      status: "rejected",
+      rejectedBy: normalizedRejecterUid,
+      rejectedAt: serverTimestamp()
+    });
+    return {
+      groupId: normalizedGroupId,
+      requestId: normalizedRequestId,
+      rejectedBy: normalizedRejecterUid
+    };
+  }
+  function subscribeEmergencyUnlockHistory(groupId, onChange, onError) {
+    const normalizedGroupId = normalizeText2(groupId);
+    if (!normalizedGroupId) {
+      onChange([]);
+      return () => {
+      };
+    }
+    const historyQuery = query(
+      collection(db, "groups", normalizedGroupId, "unlockHistory"),
+      orderBy("unlockedAt", "desc"),
+      limit(20)
+    );
+    return onSnapshot(
+      historyQuery,
+      (snapshot) => onChange(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))),
+      onError
+    );
+  }
   async function createEmergencyUnlockHistory(groupId, history = {}) {
     const normalizedGroupId = normalizeText2(groupId);
     const uid = normalizeText2(history.uid);
@@ -28483,6 +28708,22 @@ This typically indicates that your device does not have a healthy Internet conne
       uid,
       displayName: normalizeText2(history.displayName, "Anonymous"),
       type: "emergency",
+      reason: normalizeText2(history.reason),
+      progressAtUnlock: normalizeNumber2(history.progressAtUnlock),
+      unlockedAt: serverTimestamp()
+    });
+    return { groupId: normalizedGroupId, historyId: historyRef.id };
+  }
+  async function createReasonUnlockHistory(groupId, history = {}) {
+    const normalizedGroupId = normalizeText2(groupId);
+    const uid = normalizeText2(history.uid);
+    if (!normalizedGroupId) throw new Error("groupId is required");
+    if (!uid) throw new Error("uid is required");
+    const historyRef = doc(collection(db, "groups", normalizedGroupId, "unlockHistory"));
+    await setDoc(historyRef, {
+      uid,
+      displayName: normalizeText2(history.displayName, "Anonymous"),
+      type: "reason",
       reason: normalizeText2(history.reason),
       progressAtUnlock: normalizeNumber2(history.progressAtUnlock),
       unlockedAt: serverTimestamp()
@@ -28530,6 +28771,10 @@ This typically indicates that your device does not have a healthy Internet conne
       displayName: member.displayName || user.displayName || ""
     });
   }
+  async function upsertTestBot2(groupId, bot = {}) {
+    const user = await ensureAnonymousUser();
+    return upsertTestBot(groupId, user.uid, bot);
+  }
   async function createUnlockRequest2(groupId, request = {}) {
     const user = await ensureAnonymousUser();
     return createUnlockRequest(groupId, {
@@ -28542,9 +28787,21 @@ This typically indicates that your device does not have a healthy Internet conne
     const user = await ensureAnonymousUser();
     return approveUnlockRequest(groupId, requestId, approverUid || user.uid);
   }
+  async function rejectUnlockRequest2(groupId, requestId, rejecterUid) {
+    const user = await ensureAnonymousUser();
+    return rejectUnlockRequest(groupId, requestId, rejecterUid || user.uid);
+  }
   async function createEmergencyUnlockHistory2(groupId, history = {}) {
     const user = await ensureAnonymousUser();
     return createEmergencyUnlockHistory(groupId, {
+      ...history,
+      uid: history.uid || user.uid,
+      displayName: history.displayName || user.displayName || ""
+    });
+  }
+  async function createReasonUnlockHistory2(groupId, history = {}) {
+    const user = await ensureAnonymousUser();
+    return createReasonUnlockHistory(groupId, {
       ...history,
       uid: history.uid || user.uid,
       displayName: history.displayName || user.displayName || ""
@@ -28555,15 +28812,27 @@ This typically indicates that your device does not have a healthy Internet conne
     upsertTask,
     deleteTask,
     subscribeTasks,
+    subscribeSettings,
+    upsertSettings,
     upsertUserProfile,
     updateTodayProgress,
     createGroup: createGroup2,
+    getGroup,
     joinGroup: joinGroup2,
+    subscribeGroup,
     subscribeGroupMembers,
+    updateGroupMemberProgress,
+    upsertTestBot: upsertTestBot2,
+    updateGroupSettings,
+    createGroupActivity,
+    subscribeGroupActivities,
     createUnlockRequest: createUnlockRequest2,
     subscribeUnlockRequests,
     approveUnlockRequest: approveUnlockRequest2,
+    rejectUnlockRequest: rejectUnlockRequest2,
+    subscribeEmergencyUnlockHistory,
     createEmergencyUnlockHistory: createEmergencyUnlockHistory2,
+    createReasonUnlockHistory: createReasonUnlockHistory2,
     deleteGroupMember
   };
   console.log("[Firebase] Firebase bundle loaded");
@@ -28605,7 +28874,6 @@ This typically indicates that your device does not have a healthy Internet conne
 @firebase/util/dist/index.esm.js:
 @firebase/util/dist/index.esm.js:
 @firebase/logger/dist/esm/index.esm.js:
-@firebase/firestore/dist/common-456515ba.esm.js:
 @firebase/firestore/dist/common-456515ba.esm.js:
 @firebase/firestore/dist/common-456515ba.esm.js:
 @firebase/firestore/dist/common-456515ba.esm.js:
@@ -29175,7 +29443,7 @@ re2js/build/index.esm.js:
 @firebase/firestore/dist/common-456515ba.esm.js:
   (**
    * @license
-   * Copyright 2025 Google LLC
+   * Copyright 2017 Google LLC
    *
    * Licensed under the Apache License, Version 2.0 (the "License");
    * you may not use this file except in compliance with the License.
@@ -29191,7 +29459,7 @@ re2js/build/index.esm.js:
    *)
   (**
    * @license
-   * Copyright 2017 Google LLC
+   * Copyright 2025 Google LLC
    *
    * Licensed under the Apache License, Version 2.0 (the "License");
    * you may not use this file except in compliance with the License.

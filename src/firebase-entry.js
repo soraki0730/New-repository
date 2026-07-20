@@ -1,16 +1,32 @@
 import { ensureAnonymousUser } from './authService.js';
-import { upsertTask, subscribeTasks, deleteTask } from './taskRepository.js';
+import {
+  upsertTask,
+  subscribeTasks,
+  deleteTask,
+  subscribeSettings,
+  upsertSettings
+} from './taskRepository.js';
 import { upsertUserProfile, updateTodayProgress } from './profileRepository.js';
 import {
   createGroup as createGroupRecord,
+  createGroupActivity,
   deleteGroupMember,
+  getGroup,
   joinGroup as joinGroupRecord,
-  subscribeGroupMembers
+  subscribeGroup,
+  subscribeGroupActivities,
+  subscribeGroupMembers,
+  updateGroupMemberProgress,
+  updateGroupSettings,
+  upsertTestBot as upsertTestBotRecord
 } from './groupRepository.js';
 import {
   approveUnlockRequest as approveUnlockRequestRecord,
   createEmergencyUnlockHistory as createEmergencyUnlockHistoryRecord,
+  createReasonUnlockHistory as createReasonUnlockHistoryRecord,
   createUnlockRequest as createUnlockRequestRecord,
+  rejectUnlockRequest as rejectUnlockRequestRecord,
+  subscribeEmergencyUnlockHistory,
   subscribeUnlockRequests
 } from './unlockRequestRepository.js';
 
@@ -59,6 +75,11 @@ async function joinGroup(groupId, member = {}) {
   });
 }
 
+async function upsertTestBot(groupId, bot = {}) {
+  const user = await ensureAnonymousUser();
+  return upsertTestBotRecord(groupId, user.uid, bot);
+}
+
 async function createUnlockRequest(groupId, request = {}) {
   const user = await ensureAnonymousUser();
   return createUnlockRequestRecord(groupId, {
@@ -73,9 +94,23 @@ async function approveUnlockRequest(groupId, requestId, approverUid) {
   return approveUnlockRequestRecord(groupId, requestId, approverUid || user.uid);
 }
 
+async function rejectUnlockRequest(groupId, requestId, rejecterUid) {
+  const user = await ensureAnonymousUser();
+  return rejectUnlockRequestRecord(groupId, requestId, rejecterUid || user.uid);
+}
+
 async function createEmergencyUnlockHistory(groupId, history = {}) {
   const user = await ensureAnonymousUser();
   return createEmergencyUnlockHistoryRecord(groupId, {
+    ...history,
+    uid: history.uid || user.uid,
+    displayName: history.displayName || user.displayName || ''
+  });
+}
+
+async function createReasonUnlockHistory(groupId, history = {}) {
+  const user = await ensureAnonymousUser();
+  return createReasonUnlockHistoryRecord(groupId, {
     ...history,
     uid: history.uid || user.uid,
     displayName: history.displayName || user.displayName || ''
@@ -87,15 +122,27 @@ window.studyFirebase = {
   upsertTask,
   deleteTask,
   subscribeTasks,
+  subscribeSettings,
+  upsertSettings,
   upsertUserProfile,
   updateTodayProgress,
   createGroup,
+  getGroup,
   joinGroup,
+  subscribeGroup,
   subscribeGroupMembers,
+  updateGroupMemberProgress,
+  upsertTestBot,
+  updateGroupSettings,
+  createGroupActivity,
+  subscribeGroupActivities,
   createUnlockRequest,
   subscribeUnlockRequests,
   approveUnlockRequest,
+  rejectUnlockRequest,
+  subscribeEmergencyUnlockHistory,
   createEmergencyUnlockHistory,
+  createReasonUnlockHistory,
   deleteGroupMember
 };
 
