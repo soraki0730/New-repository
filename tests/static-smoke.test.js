@@ -58,3 +58,10 @@ test('Firestoreルールがグループの実データを保護する', () => {
   });
   assert.ok(rules.includes("resource.data.requesterUid != request.auth.uid"));
 });
+
+test('FirestoreルールをFirebase CLIからデプロイできる', () => {
+  const config = JSON.parse(read('firebase.json'));
+  assert.equal(config.firestore.rules, 'firestore.rules');
+  const projects = JSON.parse(read('.firebaserc'));
+  assert.equal(projects.projects.default, 'shibafu-3cc52');
+});
