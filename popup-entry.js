@@ -13,6 +13,23 @@ async function initPopup() {
     }
   };
 
+  const loadGroupSettings = () => new Promise((resolve) => {
+    const fallback = { unlockRule: 'free', emergencyUnlock: true, groupId: '' };
+    if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+      chrome.storage.local.get(['studyGroupSettings', 'firebaseGroupId'], (result) => {
+        const savedGroupId = result?.firebaseGroupId || '';
+        const safeFallback = savedGroupId ? { ...fallback, groupId: savedGroupId, unlockRule: 'approval' } : fallback;
+        resolve({ ...safeFallback, ...(result?.studyGroupSettings || {}) });
+      });
+      return;
+    }
+    try {
+      resolve({ ...fallback, ...JSON.parse(localStorage.getItem('studyGroupSettings') || '{}') });
+    } catch (error) {
+      resolve(fallback);
+    }
+  });
+
   // 今日のタスク進捗を表示
   const today = new Date().toISOString().slice(0, 10);
   const tasks = await loadTasks();
@@ -29,6 +46,20 @@ async function initPopup() {
   syncStudyModeUi(studyOn);
 
   toggle.addEventListener("change", async () => {
+    if (!toggle.checked) {
+      const settings = await loadGroupSettings();
+      if (settings.groupId && settings.unlockRule !== 'free') {
+        toggle.checked = true;
+        syncStudyModeUi(true);
+        if (banner) {
+          banner.textContent = settings.unlockRule === 'reason'
+            ? '🔒 解除理由の入力は管理画面から行ってください'
+            : '🔒 メンバーへの解除申請は管理画面から行ってください';
+        }
+        chrome.tabs.create({ url: chrome.runtime.getURL("app.html") });
+        return;
+      }
+    }
     await saveStudyMode(toggle.checked);
     syncStudyModeUi(toggle.checked);
   });

@@ -197,7 +197,7 @@
           </div>
         </div>
 
-        <div class="settings-section" id="bot-section">
+        <div class="settings-section" id="bot-section" hidden>
           <p class="settings-section__title">🤖 テストBOT</p>
           <div id="bot-list" class="bot-list"></div>
           <button class="bot-add-btn" id="bot-add-btn" type="button">＋ BOTを追加</button>
@@ -289,6 +289,7 @@
             <div class="group-view-header__info">
               <h2 id="group-name">グループ名</h2>
               <span class="group-type-badge" id="group-type-badge"></span>
+              <span class="group-id-label" id="group-id-label"></span>
             </div>
             <button class="icon-btn" id="group-settings-btn" aria-label="グループ設定">⚙️</button>
           </div>
@@ -302,6 +303,9 @@
             <span id="gr-unlock-badge" class="gr-badge" hidden></span>
           </div>
           <div id="gr-unlock-list" class="gr-unlock-list"></div>
+
+          <div class="section-label" style="margin-top:20px">🚨 緊急解除履歴</div>
+          <div id="gr-emergency-list" class="gr-emergency-list"></div>
 
           <div class="section-label" style="margin-top:20px">アクティビティ</div>
           <div id="group-activity-feed" class="activity-feed"></div>

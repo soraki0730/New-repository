@@ -1,150 +1,288 @@
 /* =========================================================
-   group-room-ui.js  ―  グループ部屋 UI（実データ版）
-   group-ui.js のダミー描画を実データで上書きする
+   group-room-ui.js  ―  メンバー・解除申請・緊急解除履歴
    ========================================================= */
 
 (function () {
-  // ====== ダミーデータ（解除申請） ======
+  let groupId = '';
+  let currentUid = '';
+  let currentName = '名前未設定';
+  let members = [];
+  let requests = [];
+  let emergencyHistory = [];
+  let unsubscribeRequests = null;
+  let unsubscribeHistory = null;
 
-  const DUMMY_UNLOCK_REQUESTS = [
-    {
-      id: 'req-001',
-      userName: '桂',
-      reason: '課題でYouTubeの解説動画を見る必要があります',
-      requestedAt: Date.now() - 8 * 60 * 1000,
-    },
-  ];
-
-  // ====== 状態 ======
-
-  let _members = [];
-  let _groupId = '';
-
-  // ====== ユーティリティ ======
-
-  function rel(ts) {
-    if (!ts) return '';
-    const ms = typeof ts.toMillis === 'function' ? ts.toMillis() : ts;
-    const diff = Math.max(1, Math.round((Date.now() - ms) / 60000));
-    if (diff < 60) return `${diff}分前`;
-    const h = Math.round(diff / 60);
-    if (h < 24) return `${h}時間前`;
-    return `${Math.round(h / 24)}日前`;
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
   }
 
-  function pctColor(p) {
-    if (p >= 100) return '#4caf50';
-    if (p >= 50)  return '#2196f3';
+  function toMillis(timestamp) {
+    if (!timestamp) return 0;
+    if (typeof timestamp.toMillis === 'function') return timestamp.toMillis();
+    if (typeof timestamp.toDate === 'function') return timestamp.toDate().getTime();
+    return Number(timestamp) || Date.parse(timestamp) || 0;
+  }
+
+  function relativeTime(timestamp) {
+    const value = toMillis(timestamp);
+    if (!value) return '';
+    const minutes = Math.max(0, Math.floor((Date.now() - value) / 60000));
+    if (minutes < 1) return 'たった今';
+    if (minutes < 60) return `${minutes}分前`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}時間前`;
+    return `${Math.floor(hours / 24)}日前`;
+  }
+
+  function progressColor(progress) {
+    if (progress >= 100) return '#4caf50';
+    if (progress >= 50) return '#2196f3';
     return '#ff9800';
   }
 
   function statusBadge(member) {
-    if (member.totalCount === 0) return { text: '未設定',  cls: 'gr-s--idle' };
+    if (member.totalCount === 0) return { text: '未設定', cls: 'gr-s--idle' };
     if (member.todayProgress >= 100) return { text: '完了 🎉', cls: 'gr-s--done' };
-    if (member.todayProgress > 0)    return { text: '学習中', cls: 'gr-s--active' };
+    if (member.studying || member.todayProgress > 0) return { text: '学習中', cls: 'gr-s--active' };
     return { text: '未着手', cls: 'gr-s--idle' };
   }
 
-  // ====== 描画：メンバー一覧（#group-member-list を上書き） ======
+  function renderSharedTasks(sharedTasks = []) {
+    if (!Array.isArray(sharedTasks) || sharedTasks.length === 0) return '';
+    return `<div class="gr-shared-tasks">${sharedTasks.map((task) => {
+      if (task.title) {
+        return `<div class="gr-shared-task"><span>${escapeHtml(task.title)}</span><strong>${Number(task.progress) || 0}%</strong></div>`;
+      }
+      return `<div class="gr-shared-task"><span>${escapeHtml(task.category || '未分類')}</span><strong>${Number(task.completedCount) || 0}/${Number(task.totalCount) || 0}</strong></div>`;
+    }).join('')}</div>`;
+  }
 
   function renderMembers() {
     const list = document.getElementById('group-member-list');
     if (!list) return;
-
-    if (!_groupId || _members.length === 0) return; // ダミーデータのままにする
-
-    list.innerHTML = '';
-    _members.forEach((m) => {
-      const pct    = m.todayProgress || 0;
-      const status = statusBadge(m);
-      const card   = document.createElement('div');
-      card.className = 'gr-member-card';
-      card.innerHTML = `
-        <div class="gr-member-card__top">
-          <div class="gr-member-card__left">
-            <div class="gr-avatar">${(m.displayName || '?')[0]}</div>
-            <div>
-              <div class="gr-member-name">${m.displayName || '名前未設定'}</div>
-              <span class="gr-status ${status.cls}">${status.text}</span>
+    if (!groupId) {
+      list.innerHTML = '<p class="gr-empty-note">グループに参加するとメンバーが表示されます</p>';
+      return;
+    }
+    if (members.length === 0) {
+      list.innerHTML = '<p class="gr-empty-note">メンバー情報を読み込み中です</p>';
+      return;
+    }
+    list.innerHTML = members.map((member) => {
+      const progress = Math.max(0, Math.min(100, member.todayProgress || 0));
+      const status = statusBadge(member);
+      const isSelf = member.uid === currentUid;
+      return `
+        <div class="gr-member-card${isSelf ? ' gr-member-card--self' : ''}">
+          <div class="gr-member-card__top">
+            <div class="gr-member-card__left">
+              <div class="gr-avatar">${escapeHtml((member.displayName || '?')[0])}</div>
+              <div>
+                <div class="gr-member-name">${escapeHtml(member.displayName || '名前未設定')}${isSelf ? ' <span class="group-badge group-badge--self">自分</span>' : ''}</div>
+                <span class="gr-status ${status.cls}">${escapeHtml(status.text)}</span>
+              </div>
             </div>
+            <div class="gr-member-pct" style="color:${progressColor(progress)}">${progress}%</div>
           </div>
-          <div class="gr-member-pct" style="color:${pctColor(pct)}">${pct}%</div>
-        </div>
-        <div class="gr-progress-track">
-          <div class="gr-progress-bar" style="width:${pct}%;background:${pctColor(pct)}"></div>
-        </div>
-        <div class="gr-member-meta">
-          ${m.completedCount || 0} / ${m.totalCount || 0} タスク完了
-          <span class="gr-updated">${rel(m.updatedAt || m.lastActiveAt)}</span>
+          <div class="gr-progress-track">
+            <div class="gr-progress-bar" style="width:${progress}%;background:${progressColor(progress)}"></div>
+          </div>
+          <div class="gr-member-meta">
+            ${member.completedCount || 0} / ${member.totalCount || 0} タスク完了
+            <span class="gr-updated">${escapeHtml(relativeTime(member.lastActiveAt || member.updatedAt))}</span>
+          </div>
+          ${renderSharedTasks(member.sharedTasks)}
+          ${isSelf ? '' : `<div class="group-reactions">
+            ${['👏', '🔥', '👍'].map((emoji) => `<button class="reaction-btn" data-uid="${escapeHtml(member.uid)}" data-name="${escapeHtml(member.displayName)}" data-emoji="${emoji}" type="button">${emoji}</button>`).join('')}
+          </div>`}
         </div>
       `;
-      list.appendChild(card);
+    }).join('');
+    list.querySelectorAll('.reaction-btn').forEach((button) => {
+      button.addEventListener('click', async () => {
+        try {
+          await window.GroupUI?.sendReaction(button.dataset.uid, button.dataset.name, button.dataset.emoji);
+          button.classList.add('reaction-btn--sent');
+          setTimeout(() => button.classList.remove('reaction-btn--sent'), 1200);
+        } catch (error) {
+          console.error('[GroupRoom] reaction failed', error);
+        }
+      });
     });
   }
 
-  // ====== 描画：解除申請（#gr-unlock-list） ======
+  async function updateRequesterState(request) {
+    if (request.requesterUid !== currentUid || !['approved', 'rejected'].includes(request.status)) return;
+    const state = {
+      status: request.status,
+      reason: request.reason || '',
+      requestedAt: request.requestedAt?.toDate?.().toISOString?.() || new Date(toMillis(request.requestedAt) || Date.now()).toISOString(),
+      requestId: request.id,
+      lastUpdated: Date.now(),
+    };
+    const payload = { unlockRequestUiState: state };
+    if (request.status === 'approved') payload.studyMode = false;
+    if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+      await new Promise((resolve) => chrome.storage.local.set(payload, resolve));
+    } else {
+      Object.entries(payload).forEach(([key, value]) => localStorage.setItem(key, JSON.stringify(value)));
+    }
+  }
 
-  function renderUnlockRequests() {
-    const list  = document.getElementById('gr-unlock-list');
+  function requestStatusLabel(status) {
+    return { pending: '申請中', approved: '承認済み ✓', rejected: '却下済み' }[status] || status;
+  }
+
+  function renderRequests() {
+    const list = document.getElementById('gr-unlock-list');
     const badge = document.getElementById('gr-unlock-badge');
     if (!list) return;
-
-    const reqs = _groupId ? DUMMY_UNLOCK_REQUESTS : [];
-
+    const pendingCount = requests.filter((request) => request.status === 'pending').length;
     if (badge) {
-      badge.textContent = reqs.length > 0 ? String(reqs.length) : '';
-      badge.hidden = reqs.length === 0;
+      badge.textContent = pendingCount ? String(pendingCount) : '';
+      badge.hidden = pendingCount === 0;
     }
-
-    if (reqs.length === 0) {
+    if (!groupId) {
+      list.innerHTML = '<p class="gr-empty-note">グループに参加すると解除申請が表示されます</p>';
+      return;
+    }
+    if (requests.length === 0) {
       list.innerHTML = '<p class="gr-empty-note">現在、解除申請はありません</p>';
       return;
     }
-
-    list.innerHTML = '';
-    reqs.forEach((req) => {
-      const card = document.createElement('div');
-      card.className = 'gr-unlock-card';
-      card.innerHTML = `
-        <div class="gr-unlock-card__header">
-          <span class="gr-unlock-icon">🔓</span>
-          <span class="gr-unlock-user">${req.userName}さんが解除申請中</span>
-          <span class="gr-unlock-time">${rel(req.requestedAt)}</span>
-        </div>
-        <p class="gr-unlock-reason">理由：${req.reason}</p>
-        <div class="gr-unlock-actions">
-          <button class="gr-approve-btn" type="button">承認する</button>
-          <button class="gr-deny-btn"    type="button">却下</button>
+    list.innerHTML = requests.slice(0, 10).map((request) => {
+      const pending = request.status === 'pending';
+      const isOwn = request.requesterUid === currentUid;
+      return `
+        <div class="gr-unlock-card gr-unlock-card--${escapeHtml(request.status || 'pending')}">
+          <div class="gr-unlock-card__header">
+            <span class="gr-unlock-icon">🔓</span>
+            <span class="gr-unlock-user">${escapeHtml(request.requesterName || '不明')}さんの解除申請</span>
+            <span class="gr-unlock-time">${escapeHtml(relativeTime(request.requestedAt))}</span>
+          </div>
+          <p class="gr-unlock-reason">理由：${escapeHtml(request.reason || '理由なし')}</p>
+          ${pending ? `<div class="gr-unlock-actions">
+            <button class="gr-approve-btn" data-action="approve" data-id="${escapeHtml(request.id)}" type="button" ${isOwn ? 'disabled title="自分の申請は承認できません"' : ''}>承認する</button>
+            <button class="gr-deny-btn" data-action="reject" data-id="${escapeHtml(request.id)}" type="button" ${isOwn ? 'disabled title="自分の申請は却下できません"' : ''}>却下</button>
+          </div>` : `<div class="gr-request-result gr-request-result--${escapeHtml(request.status)}">${escapeHtml(requestStatusLabel(request.status))}</div>`}
         </div>
       `;
-      card.querySelector('.gr-approve-btn').addEventListener('click', () => {
-        console.log('[GroupRoom] approve', req.id);
-        alert(`${req.userName}さんの解除申請を承認しました（ダミー）`);
-      });
-      card.querySelector('.gr-deny-btn').addEventListener('click', () => {
-        console.log('[GroupRoom] deny', req.id);
-        alert(`${req.userName}さんの解除申請を却下しました（ダミー）`);
-      });
-      list.appendChild(card);
+    }).join('');
+    list.querySelectorAll('[data-action]').forEach((button) => {
+      button.addEventListener('click', () => resolveRequest(button.dataset.id, button.dataset.action, button));
     });
   }
 
-  // ====== 外部API ======
+  async function resolveRequest(requestId, action, button) {
+    const api = window.studyFirebase;
+    if (!api || !groupId || !currentUid) return;
+    const request = requests.find((item) => item.id === requestId);
+    button.disabled = true;
+    button.textContent = '更新中…';
+    try {
+      if (action === 'approve') {
+        await api.approveUnlockRequest(groupId, requestId, currentUid);
+        await window.GroupUI?.recordActivity('unlock_approved', { requestId });
+      } else {
+        await api.rejectUnlockRequest(groupId, requestId, currentUid);
+        await window.GroupUI?.recordActivity('unlock_rejected', { requestId });
+      }
+    } catch (error) {
+      console.error('[GroupRoom] request update failed', error);
+      button.disabled = false;
+      button.textContent = action === 'approve' ? '承認する' : '却下';
+    }
+  }
+
+  function renderEmergencyHistory() {
+    const list = document.getElementById('gr-emergency-list');
+    if (!list) return;
+    if (!groupId) {
+      list.innerHTML = '<p class="gr-empty-note">グループに参加すると緊急解除履歴が表示されます</p>';
+      return;
+    }
+    const emergencyOnly = emergencyHistory.filter((history) => history.type === 'emergency');
+    if (emergencyOnly.length === 0) {
+      list.innerHTML = '<p class="gr-empty-note">緊急解除履歴はありません</p>';
+      return;
+    }
+    list.innerHTML = emergencyOnly.map((history) => `
+      <div class="gr-emergency-card">
+        <div class="gr-emergency-card__head">
+          <span>🚨 ${escapeHtml(history.displayName || '不明')}さんが緊急解除</span>
+          <span>${escapeHtml(relativeTime(history.unlockedAt))}</span>
+        </div>
+        <p>理由：${escapeHtml(history.reason || '理由なし')}</p>
+        <small>解除時の進捗 ${Number(history.progressAtUnlock) || 0}%</small>
+      </div>
+    `).join('');
+  }
+
+  function stopSubscriptions() {
+    if (typeof unsubscribeRequests === 'function') unsubscribeRequests();
+    if (typeof unsubscribeHistory === 'function') unsubscribeHistory();
+    unsubscribeRequests = null;
+    unsubscribeHistory = null;
+  }
+
+  async function subscribe() {
+    stopSubscriptions();
+    requests = [];
+    emergencyHistory = [];
+    renderRequests();
+    renderEmergencyHistory();
+    if (!groupId || !window.studyFirebase) return;
+    if (window.studyFirebase.subscribeUnlockRequests) {
+      unsubscribeRequests = window.studyFirebase.subscribeUnlockRequests(groupId, async (nextRequests) => {
+        requests = nextRequests;
+        renderRequests();
+        const latestOwnRequest = nextRequests.find((request) => request.requesterUid === currentUid);
+        if (latestOwnRequest) await updateRequesterState(latestOwnRequest);
+      }, (error) => console.error('[GroupRoom] unlock subscription failed', error));
+    }
+    if (window.studyFirebase.subscribeEmergencyUnlockHistory) {
+      unsubscribeHistory = window.studyFirebase.subscribeEmergencyUnlockHistory(groupId, (history) => {
+        emergencyHistory = history;
+        renderEmergencyHistory();
+      }, (error) => console.error('[GroupRoom] history subscription failed', error));
+    }
+  }
 
   window.GroupRoomUI = {
-    updateMembers(members, groupId) {
-      _members = Array.isArray(members) ? members : [];
-      if (groupId !== undefined) _groupId = groupId || '';
+    updateMembers(nextMembers, nextGroupId) {
+      members = Array.isArray(nextMembers) ? nextMembers : [];
+      if (nextGroupId !== undefined && nextGroupId !== groupId) {
+        groupId = nextGroupId || '';
+        subscribe();
+      }
       renderMembers();
-      renderUnlockRequests();
     },
-    setGroup(groupId) {
-      _groupId = groupId || '';
-      renderUnlockRequests();
+    setGroup(nextGroupId) {
+      if ((nextGroupId || '') === groupId) return;
+      groupId = nextGroupId || '';
+      subscribe();
+      renderMembers();
+    },
+    setContext(context = {}) {
+      currentUid = context.uid || currentUid;
+      currentName = context.displayName || currentName;
+      const changed = (context.groupId || '') !== groupId;
+      groupId = context.groupId || '';
+      if (changed) subscribe();
+      renderMembers();
+      renderRequests();
     },
   };
 
   document.addEventListener('DOMContentLoaded', () => {
-    renderUnlockRequests();
+    renderMembers();
+    renderRequests();
+    renderEmergencyHistory();
   });
+  window.addEventListener('beforeunload', stopSubscriptions);
 })();
